@@ -16,7 +16,7 @@ command line interface for various file manipulation tasks.
 
 ## Installation
 
-Download from [PyPI](https://pypi.org/).
+Download from [PyPI](https://pypi.org/project/gpx-kml-converter/).
 
 💾 For more installation options see [install](https://gpx-kml-converter.readthedocs.io/en/stable/getting-started/install/).
 
