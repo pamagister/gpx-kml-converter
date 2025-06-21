@@ -30,7 +30,11 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Build Unified Executable and App Bundle with PyInstaller
-        run: make build-macos
+        run: |
+          make build-macos
+          echo "Create the ZIP archive from the contents of the release folder"
+          cd release
+          zip -r ../package-macOS.zip .
 
       - name: Upload ZIP to GitHub Release
         uses: softprops/action-gh-release@v2

@@ -87,10 +87,6 @@ build-macos:    ## Build the macOS executable.
 	cp README.md release/
 	echo "Create usage instructions"
 
-	echo "Create the ZIP archive from the contents of the release folder"
-	cd release
-	zip -r ../package-macOS.zip .
-
 .PHONY: watch
 watch:            ## Run tests on every change.
 	ls **/**.py | entr uv run pytest -s -vvv -l --tb=long --maxfail=1 tests/
