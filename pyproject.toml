@@ -1,7 +1,7 @@
 [project]
 name = "gpx-kml-converter"
 dynamic = ["version"]
-description = "Feature-rich Python project template for gpx-kml-converter."
+description = "Easily convert, merge and compress GPX and KML files."
 authors = [
     {name = "pamagister"}
 ]
