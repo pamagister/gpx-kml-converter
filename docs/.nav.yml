@@ -1,0 +1,14 @@
+# Navigation tree powered by mkdocs-awesome-nav
+#
+# This MkDocs plugin gives you full control over your navigation structure
+# without having to write the entire thing by hand. Whether you just want
+# to add an external link or restructure the entire navigation tree,
+# awesome-nav has you covered.
+#
+# https://github.com/lukasgeiter/mkdocs-awesome-nav
+
+nav:
+  - index.md
+  - develop
+  - getting-started
+  - usage

@@ -1,0 +1,28 @@
+name: Sync README with docs/index.md
+
+on:
+  push:
+    paths:
+      - "docs/index.md"
+    branches: [ main ]
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Update README.md
+        run: python scripts/update_readme.py
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add README.md
+          git commit -m "Update README.md from docs/index.md" || echo "No changes"
+          git push

@@ -1,0 +1,33 @@
+site_name: python-template-project
+site_url: !ENV READTHEDOCS_CANONICAL_URL
+site_description: A feature-rich Python project template with with auto-generated CLI, GUI and parameterized configuration.
+repo_url: https://github.com/pamagister/python-template-project
+repo_name: GitHub
+
+# See also:
+#  https://squidfunk.github.io/mkdocs-material/
+#  https://www.mkdocs.org/user-guide/
+#  Extensions: https://python-markdown.github.io/extensions/
+#  - CodeHilite: https://python-markdown.github.io/extensions/code_hilite/
+
+theme:
+  name: readthedocs
+  highlightjs: true
+  logo: _static/img/logo.png
+  favicon: _static/img/favicon.png
+  features:
+    - navigation.instant
+
+extra_css:
+  - css/custom.css
+
+markdown_extensions:
+  - toc:
+      permalink: "#"
+  - tables
+  - admonition
+  - codehilite:
+      use_pygments: True
+
+plugins:
+   - awesome-nav

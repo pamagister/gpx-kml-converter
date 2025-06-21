@@ -1,0 +1,31 @@
+name: Setup Environment
+
+description: Setup uv environment
+
+inputs:
+  python-version:
+    description: 'Python version to use'
+    required: true
+    default: '3.11'
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+      with:
+        version: "latest"
+
+    - name: Create virtual environment
+      run: uv venv .venv --python ${{ inputs.python-version }}
+      shell: bash
+
+    - name: Activate virtual environment
+      run: echo "VIRTUAL_ENV=.venv" >> $GITHUB_ENV
+      shell: bash
+
+    - name: Install dependencies
+      run: |
+        uv pip install -e .
+        uv pip install -e ".[dev]"
+      shell: bash
