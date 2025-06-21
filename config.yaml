@@ -8,10 +8,10 @@ app:
   log_level: INFO
   max_workers: 4
 cli:
-  elevation: true
+  elevation: false
   extract_waypoints: true
   input: ''
-  min_dist: 100
+  min_dist: 55
   output: ''
 gui:
   auto_scroll_log: true
