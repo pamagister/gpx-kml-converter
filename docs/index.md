@@ -14,7 +14,7 @@ command line interface for various file manipulation tasks.
 
 ## Installation
 
-Download from [PyPI](https://pypi.org/project/gpx-kml-converter/).
+Download from [PyPI](https://pypi.org/).
 
 💾 For more installation options see [install](https://gpx-kml-converter.readthedocs.io/en/stable/getting-started/install/).
 
@@ -105,6 +105,7 @@ The underlying processing engine includes sophisticated optimization techniques:
 
 * **Settings Dialog:** Access a comprehensive settings dialog from the "Options -> Settings" menu. Here, you can configure various application parameters, including `min_dist`, date formats, and other internal settings. Changes made here are saved to `config.yaml` for persistence across sessions. 🔧💾
 
+
 ## 4. Usage ▶️
 
 To run the GUI application, execute the following command in your project's root directory:
@@ -115,13 +116,11 @@ To run the GUI application, execute the following command in your project's root
 python -m gpx_kml_converter.cli [OPTIONS] path/to/file
 ```
 
-
 ### Run with GUI from source
 
 ```bash
 python -m gpx_kml_converter.gui
 ```
-
 
 
 Once the GUI is launched, you can:
