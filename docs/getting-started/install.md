@@ -44,7 +44,6 @@ cd gpx-kml-converter
 ```
 
 ### Install dependencies
-
 ```bash
 uv venv
 uv pip install -e .[dev,docs]
