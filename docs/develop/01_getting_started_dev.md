@@ -5,9 +5,9 @@
 
 Getting started on developing your own project based on this template
 
-> **DO NOT FORK** this is meant to be used from **[Use this template](https://github.com/pamagister/python-template-project/generate)** feature.
+> **DO NOT FORK** this is meant to be used from **[Use this template](https://github.com/pamagister/gpx-kml-converter/generate)** feature.
 
-1. Click on **[Use this template](https://github.com/pamagister/python-template-project/generate)**
+1. Click on **[Use this template](https://github.com/pamagister/gpx-kml-converter/generate)**
 3. Give a name to your project  
    (e.g. `my_python_project` recommendation is to use all lowercase and underscores separation for repo names.)
 3. Wait until the first run of CI finishes  

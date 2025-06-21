@@ -8,7 +8,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from python_template_project.config.config import ConfigParameterManager
+from gpx_kml_converter.config.config import ConfigParameterManager
 
 
 class TestGenericCLI(unittest.TestCase):

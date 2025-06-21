@@ -1,4 +1,4 @@
-"""Centralized logging configuration for python_template_project.
+"""Centralized logging configuration for gpx_kml_converter.
 
 This module provides a unified logging setup that supports:
 - File logging with rotation
@@ -12,7 +12,7 @@ import logging.handlers
 import sys
 from pathlib import Path
 
-from python_template_project.config.config import ConfigParameterManager
+from gpx_kml_converter.config.config import ConfigParameterManager
 
 
 class GuiLogHandler(logging.Handler):
@@ -41,7 +41,7 @@ class LoggerManager:
 
     def __init__(self, config: ConfigParameterManager):
         self.config = config
-        self.logger = logging.getLogger("python_template_project")
+        self.logger = logging.getLogger("gpx_kml_converter")
         self.gui_handler = None
         self.file_handler = None
         self.console_handler = None
@@ -76,7 +76,7 @@ class LoggerManager:
         log_dir = Path("logs")
         log_dir.mkdir(exist_ok=True)
 
-        log_file = log_dir / "python_template_project.log"
+        log_file = log_dir / "gpx_kml_converter.log"
 
         # Use RotatingFileHandler to prevent huge log files
         self.file_handler = logging.handlers.RotatingFileHandler(
@@ -129,7 +129,7 @@ class LoggerManager:
             Logger instance
         """
         if name:
-            return logging.getLogger(f"python_template_project.{name}")
+            return logging.getLogger(f"gpx_kml_converter.{name}")
         return self.logger
 
     def set_log_level(self, level: str):

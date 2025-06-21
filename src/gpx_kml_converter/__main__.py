@@ -1,4 +1,4 @@
-"""Entry point for python_template_project."""
+"""Entry point for gpx_kml_converter."""
 
 import sys  # pragma: no cover
 

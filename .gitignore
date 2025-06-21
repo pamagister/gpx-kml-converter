@@ -194,6 +194,6 @@ cython_debug/
 .cursorindexingignore
 /.idea/misc.xml
 /.idea/modules.xml
-/.idea/python-template-project.iml
+/.idea/gpx-kml-converter.iml
 /.idea/inspectionProfiles/profiles_settings.xml
 /.idea/inspectionProfiles/Project_Default.xml

@@ -1,15 +1,15 @@
 <!-- This README.md is auto-generated from docs/index.md -->
 
-# Welcome to python-template-project
+# Welcome to gpx-kml-converter
 
 A feature-rich Python project template with with auto-generated CLI, GUI and parameterized configuration.
 
-[![Github CI Status](https://github.com/pamagister/python-template-project/actions/workflows/main.yml/badge.svg)](https://github.com/pamagister/python-template-project/actions)
-[![GitHub release](https://img.shields.io/github/v/release/pamagister/python-template-project)](https://github.com/pamagister/python-template-project/releases)
-[![Read the Docs](https://readthedocs.org/projects/python-template-project/badge/?version=stable)](https://python-template-project.readthedocs.io/en/stable/)
-[![License](https://img.shields.io/github/license/pamagister/python-template-project)](https://github.com/pamagister/python-template-project/blob/main/LICENSE)
-[![GitHub issues](https://img.shields.io/github/issues/pamagister/python-template-project)](https://github.com/pamagister/python-template-project/issues)
-[![PyPI](https://img.shields.io/pypi/v/python-template-project)](https://pypi.org/project/python-template-project/)
+[![Github CI Status](https://github.com/pamagister/gpx-kml-converter/actions/workflows/main.yml/badge.svg)](https://github.com/pamagister/gpx-kml-converter/actions)
+[![GitHub release](https://img.shields.io/github/v/release/pamagister/gpx-kml-converter)](https://github.com/pamagister/gpx-kml-converter/releases)
+[![Read the Docs](https://readthedocs.org/projects/gpx-kml-converter/badge/?version=stable)](https://gpx-kml-converter.readthedocs.io/en/stable/)
+[![License](https://img.shields.io/github/license/pamagister/gpx-kml-converter)](https://github.com/pamagister/gpx-kml-converter/blob/main/LICENSE)
+[![GitHub issues](https://img.shields.io/github/issues/pamagister/gpx-kml-converter)](https://github.com/pamagister/gpx-kml-converter/issues)
+[![PyPI](https://img.shields.io/pypi/v/gpx-kml-converter)](https://pypi.org/project/gpx-kml-converter/)
 
 
 This template provides a solid foundation for your next Python project, incorporating best practices for testing, automation, and distribution. It streamlines the development process with a comprehensive set of pre-configured tools and workflows, allowing you to focus on writing code.
@@ -21,13 +21,13 @@ Download from [PyPI](https://pypi.org/).
 💾 For more installation options see [install](docs/getting-started/install.md).
 
 ```bash
-pip install python-template-project
+pip install gpx-kml-converter
 ```
 
 Run GUI from command line
 
 ```bash
-python-template-project-gui
+gpx-kml-converter-gui
 ```
 
 ## How to use this template

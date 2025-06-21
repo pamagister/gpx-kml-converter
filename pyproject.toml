@@ -1,7 +1,7 @@
 [project]
-name = "python-template-project"
+name = "gpx-kml-converter"
 dynamic = ["version"]
-description = "Feature-rich Python project template designed for robustness and ease of use."
+description = "Feature-rich Python project template for gpx-kml-converter."
 authors = [
     {name = "pamagister"}
 ]
@@ -40,15 +40,15 @@ docs = [
 ]
 
 [project.scripts]
-python-template-project = "python_template_project.cli.cli:main"
-python-template-project-gui = "python_template_project.gui.gui:main"
+gpx-kml-converter = "gpx_kml_converter.cli.cli:main"
+gpx-kml-converter-gui = "gpx_kml_converter.gui.gui:main"
 
 [build-system]
 requires = ["setuptools>=61.0", "wheel", "setuptools_scm[toml]>=6.2"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools_scm]
-write_to = "src/python_template_project/_version.py"
+write_to = "src/gpx_kml_converter/_version.py"
 
 [tool.deptry]
 pep621_dev_dependency_groups = ["dev", "docs"]
@@ -56,7 +56,7 @@ pep621_dev_dependency_groups = ["dev", "docs"]
 [tool.ruff]
 line-length = 100
 target-version = "py310"
-exclude = ["src/python_template_project/_version.py"]
+exclude = ["src/gpx_kml_converter/_version.py"]
 
 [tool.ruff.lint]
 select = [

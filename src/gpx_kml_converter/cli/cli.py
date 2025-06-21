@@ -1,9 +1,9 @@
-"""Auto-generated CLI interface for python-template-project project.
+"""Auto-generated CLI interface for gpx-kml-converter project.
 
 This file was generated from config.py parameter definitions.
 Do not modify manually - regenerate using ConfigParameterManager CLI generation methods.
 
-run cli: python -m python_template_project.cli
+run cli: python -m gpx_kml_converter.cli
 """
 
 import argparse
@@ -11,9 +11,9 @@ import traceback
 from pathlib import Path
 from typing import Any
 
-from python_template_project.config.config import ConfigParameterManager
-from python_template_project.core.base import BaseGPXProcessor
-from python_template_project.core.logging import initialize_logging
+from gpx_kml_converter.config.config import ConfigParameterManager
+from gpx_kml_converter.core.base import BaseGPXProcessor
+from gpx_kml_converter.core.logging import initialize_logging
 
 
 def parse_arguments():
@@ -23,9 +23,9 @@ def parse_arguments():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  python -m python_template_project.cli input.txt
-  python -m python_template_project.cli --output result.txt input.txt
-  python -m python_template_project.cli --config custom_config.yaml input.txt
+  python -m gpx_kml_converter.cli input.txt
+  python -m gpx_kml_converter.cli --output result.txt input.txt
+  python -m gpx_kml_converter.cli --config custom_config.yaml input.txt
         """,
     )
 
@@ -154,7 +154,7 @@ def main():
         logger = logger_manager.get_logger()
 
         # Log startup information
-        logger.info("Starting python_template_project CLI")
+        logger.info("Starting gpx_kml_converter CLI")
         logger.debug(f"Command line arguments: {vars(args)}")
         logger_manager.log_config_summary()
 

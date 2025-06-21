@@ -1,4 +1,4 @@
-"""Central configuration management for python-template-project project.
+"""Central configuration management for gpx-kml-converter project.
 
 This module provides a single source of truth for all configuration parameters
 organized in categories (CLI, App, GUI). It can generate config files, CLI modules,
@@ -459,7 +459,7 @@ class ConfigParameterManager(BaseModel):
         ### 1. Standard version (only required parameter)
 
         ```bash
-        python -m python_template_project.cli {required_arg}
+        python -m gpx_kml_converter.cli {required_arg}
         ```
         """
             )
@@ -472,7 +472,7 @@ class ConfigParameterManager(BaseModel):
         ### 2. With verbose logging
 
         ```bash
-        python -m python_template_project.cli --verbose {required_arg}
+        python -m gpx_kml_converter.cli --verbose {required_arg}
         ```
         """
             )
@@ -484,7 +484,7 @@ class ConfigParameterManager(BaseModel):
         ### 3. With quiet mode
 
         ```bash
-        python -m python_template_project.cli --quiet {required_arg}
+        python -m gpx_kml_converter.cli --quiet {required_arg}
         ```
         """
             )
@@ -502,7 +502,7 @@ class ConfigParameterManager(BaseModel):
                 ### {i + 3}. Example with {i} Parameter(s)
 
                 ```bash
-                python -m python_template_project.cli {cli_part} {required_arg}
+                python -m gpx_kml_converter.cli {cli_part} {required_arg}
                 ```
                 """
                     )
@@ -515,7 +515,7 @@ class ConfigParameterManager(BaseModel):
         Command line options
 
         ```bash
-        python -m python_template_project.cli [OPTIONS] path/to/file
+        python -m gpx_kml_converter.cli [OPTIONS] path/to/file
         ```
 
         ---

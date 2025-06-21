@@ -27,7 +27,7 @@ except ImportError:
     KML_AVAILABLE = False
     kml = styles = Folder = Placemark = Document = Point = LineString = None
 
-NAME = "python_template_project"
+NAME = "gpx_kml_converter"
 
 
 class BaseGPXProcessor:

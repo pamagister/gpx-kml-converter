@@ -1,6 +1,6 @@
 # How to develop on this project
 
-python-template-project welcomes contributions from the community.
+gpx-kml-converter welcomes contributions from the community.
 
 These instructions are basically for linux base systems. (Linux, MacOS, BSD, etc.)
 
@@ -11,9 +11,9 @@ see [How to use make on Windows](make_windows.md).
 ## Setting up your own fork of this repo.
 
 - On github interface click on `Fork` button.
-- Clone your fork of this repo. `git clone git@github.com:YOUR_GIT_USERNAME/python-template-project.git`
-- Enter the directory `cd python-template-project`
-- Add upstream repo `git remote add upstream https://github.com/pamagister/python-template-project`
+- Clone your fork of this repo. `git clone git@github.com:YOUR_GIT_USERNAME/gpx-kml-converter.git`
+- Enter the directory `cd gpx-kml-converter`
+- Add upstream repo `git remote add upstream https://github.com/pamagister/gpx-kml-converter`
 
 ## Setting up your own virtual environment
 

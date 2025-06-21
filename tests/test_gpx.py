@@ -7,9 +7,9 @@ from pathlib import Path
 import gpxpy
 from gpxpy.gpx import GPXTrackPoint
 
-from python_template_project.config.config import ConfigParameterManager
-from python_template_project.core.logging import initialize_logging
-from src.python_template_project.core.base import BaseGPXProcessor
+from gpx_kml_converter.config.config import ConfigParameterManager
+from gpx_kml_converter.core.logging import initialize_logging
+from src.gpx_kml_converter.core.base import BaseGPXProcessor
 
 
 class TestGPXProcessor(unittest.TestCase):
@@ -21,7 +21,7 @@ class TestGPXProcessor(unittest.TestCase):
         """
         Set up test environment: define paths and create a temporary output directory.
         """
-        # Get the directory of the current test file (e.g., C:/dev/python-template-project/tests)
+        # Get the directory of the current test file (e.g., C:/dev/gpx-kml-converter/tests)
         current_test_file_dir = Path(__file__).parent
 
         self.test_gpx_file = current_test_file_dir.parent / "examples" / "kuhkopfsteig.gpx"

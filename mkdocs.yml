@@ -1,7 +1,7 @@
-site_name: python-template-project
+site_name: gpx-kml-converter
 site_url: !ENV READTHEDOCS_CANONICAL_URL
 site_description: A feature-rich Python project template with with auto-generated CLI, GUI and parameterized configuration.
-repo_url: https://github.com/pamagister/python-template-project
+repo_url: https://github.com/pamagister/gpx-kml-converter
 repo_name: GitHub
 
 # See also:

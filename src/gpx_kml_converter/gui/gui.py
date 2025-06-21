@@ -1,9 +1,9 @@
-"""GUI interface for python-template-project using tkinter with integrated logging.
+"""GUI interface for gpx-kml-converter using tkinter with integrated logging.
 
-This module provides a graphical user interface for the python-template-project
+This module provides a graphical user interface for the gpx-kml-converter
 with settings dialog, file management, and centralized logging capabilities.
 
-run gui: python -m python_template_project.gui
+run gui: python -m gpx_kml_converter.gui
 """
 
 import os
@@ -17,9 +17,9 @@ from functools import partial
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 
-from python_template_project.config.config import ConfigParameter, ConfigParameterManager
-from python_template_project.core.base import BaseGPXProcessor
-from python_template_project.core.logging import (
+from gpx_kml_converter.config.config import ConfigParameter, ConfigParameterManager
+from gpx_kml_converter.core.base import BaseGPXProcessor
+from gpx_kml_converter.core.logging import (
     connect_gui_logging,
     disconnect_gui_logging,
     get_logger,
@@ -366,7 +366,7 @@ class MainGui:
 
     def __init__(self, root):
         self.root = root
-        self.root.title("python-template-project")
+        self.root.title("gpx-kml-converter")
         self.root.geometry("1200x600")  # Increased width for new layout
 
         # Initialize configuration
@@ -763,12 +763,12 @@ class MainGui:
     def _open_help(self):
         """Open help documentation in browser."""
         self.logger.debug("Opening help documentation")
-        webbrowser.open("https://python-template-project.readthedocs.io/en/stable/")
+        webbrowser.open("https://gpx-kml-converter.readthedocs.io/en/stable/")
 
     def _show_about(self):
         """Show about dialog."""
         self.logger.debug("Showing about dialog")
-        messagebox.showinfo("About", "python-template-project\n\nCopyright by Paul")
+        messagebox.showinfo("About", "gpx-kml-converter\n\nCopyright by Paul")
 
     def _on_closing(self):
         """Handle application closing."""

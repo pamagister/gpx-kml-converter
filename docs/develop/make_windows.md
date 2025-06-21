@@ -190,8 +190,8 @@ If you prefer not to install `make`, create a simple Bash script:
 
 ```bash
 #!/bin/bash
-isort python-template-project/
-black -l 100 python-template-project/
+isort gpx-kml-converter/
+black -l 100 gpx-kml-converter/
 black -l 100 tests/
 ```
 
