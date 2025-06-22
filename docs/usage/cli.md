@@ -1,55 +1,45 @@
-# Command line interface
+# Command Line Interface
 
-Command line options
+Command line options for gpx_kml_converter.cli
 
 ```bash
-python -m gpx_kml_converter.cli [OPTIONS] path/to/file
+python -m gpx_kml_converter.cli [OPTIONS] input
 ```
 
----
-
-## ⚙️ CLI-Options
+## Options
 
 | Option                | Type | Description                                       | Default    | Choices       |
 |-----------------------|------|---------------------------------------------------|------------|---------------|
-| `path/to/file`        | str  | Path to input (file or folder)                    | *required* | -             |
+| `input`               | str  | Path to input (file or folder)                    | *required* | -             |
 | `--output`            | str  | Path to output destination                        | *required* | -             |
 | `--min_dist`          | int  | Maximum distance between two waypoints            | 20         | -             |
 | `--extract_waypoints` | bool | Extract starting points of each track as waypoint | True       | [True, False] |
 | `--elevation`         | bool | Include elevation data in waypoints               | True       | [True, False] |
 
 
-## 💡 Examples
-
-In the example, the following is assumed: `example.input` in the current directory
+## Examples
 
 
-### 1. Standard version (only required parameter)
+### 1. Basic usage
 
 ```bash
 python -m gpx_kml_converter.cli input
 ```
 
-### 2. With verbose logging
-
-```bash
-python -m gpx_kml_converter.cli --verbose input
-```
-
-### 3. With quiet mode
-
-```bash
-python -m gpx_kml_converter.cli --quiet input
-```
-
-### 4. Example with 1 Parameter(s)
+### 2. With min_dist parameter
 
 ```bash
 python -m gpx_kml_converter.cli --min_dist 20 input
 ```
 
-### 5. Example with 2 Parameter(s)
+### 3. With extract_waypoints parameter
 
 ```bash
-python -m gpx_kml_converter.cli --min_dist 20 --extract_waypoints True input
+python -m gpx_kml_converter.cli --extract_waypoints True input
+```
+
+### 4. With elevation parameter
+
+```bash
+python -m gpx_kml_converter.cli --elevation True input
 ```

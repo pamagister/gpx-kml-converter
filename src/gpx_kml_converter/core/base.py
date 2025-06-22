@@ -441,7 +441,7 @@ class BaseGPXProcessor:
             self.logger.debug(f"Full traceback:\n{traceback.format_exc()}")
             raise
 
-    def _optimize_waypoint(self, waypoint):
+    def _optimize_waypoint(self, waypoint: GPXWaypoint) -> GPXWaypoint:
         """Optimize waypoint with error handling."""
         try:
             # Round coordinates and elevation

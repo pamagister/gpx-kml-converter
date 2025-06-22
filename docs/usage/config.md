@@ -1,4 +1,4 @@
-# Config parameters
+# Configuration Parameters
 
 These parameters are available to configure the behavior of your application.
 The parameters in the cli category can be accessed via the command line interface.

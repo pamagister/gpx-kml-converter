@@ -147,6 +147,19 @@ wheels = [
 ]
 
 [[package]]
+name = "config-cli-gui"
+version = "0.1.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pydantic" },
+    { name = "pyyaml" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/ef/7e/54dee3767da40f0af0d7b19f2f359f8c45cca71c502c25208f54a0a6a0a8/config_cli_gui-0.1.0.tar.gz", hash = "sha256:073dca650b37c4bf51a3f0bd4e7548345b57c2a5e0e3b5ea66950d9e1c399682", size = 182054, upload-time = "2025-06-22T10:14:38.312Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/f6/87/d78bb375700c4902f70a7dd59c27d741bf45fe34ef032a8ba447cd66d4ea/config_cli_gui-0.1.0-py3-none-any.whl", hash = "sha256:a260ecc67d973f971ae580faf0b8b62229a9015b4c5c4206a36ce8c9397192a2", size = 29455, upload-time = "2025-06-22T10:14:36.798Z" },
+]
+
+[[package]]
 name = "coverage"
 version = "7.9.1"
 source = { registry = "https://pypi.org/simple" }
@@ -260,6 +273,63 @@ sdist = { url = "https://files.pythonhosted.org/packages/12/e3/9b5c8f1c80a675da2
 wheels = [
     { url = "https://files.pythonhosted.org/packages/9d/f9/554f9d1e2031a330148299b81ed7d6d5f1ef8969154384ca4ae8dd403b7a/gitchangelog-3.0.4-py2.py3-none-any.whl", hash = "sha256:45f8b8e64cece0d9bb03a35ecd8ee62c1c7157f8dac0ef3cb68381bfcc1bde29", size = 54625, upload-time = "2018-12-21T14:01:05.011Z" },
 ]
+
+[[package]]
+name = "gpx-kml-converter"
+source = { editable = "." }
+dependencies = [
+    { name = "config-cli-gui" },
+    { name = "fastkml" },
+    { name = "gpxpy" },
+    { name = "shapely" },
+    { name = "srtm-py" },
+]
+
+[package.optional-dependencies]
+dev = [
+    { name = "black" },
+    { name = "coverage" },
+    { name = "flake8" },
+    { name = "gitchangelog" },
+    { name = "isort" },
+    { name = "mypy" },
+    { name = "pre-commit" },
+    { name = "pyinstaller" },
+    { name = "pytest" },
+    { name = "pytest-cov" },
+    { name = "pytest-mock" },
+    { name = "ruff" },
+]
+docs = [
+    { name = "mkdocs" },
+    { name = "mkdocs-awesome-nav" },
+    { name = "pygments" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "black", marker = "extra == 'dev'", specifier = ">=25.1.0" },
+    { name = "config-cli-gui", specifier = ">=0.1.0" },
+    { name = "coverage", marker = "extra == 'dev'", specifier = ">=7.8.2" },
+    { name = "fastkml", specifier = ">=1.1.0" },
+    { name = "flake8", marker = "extra == 'dev'", specifier = ">=7.2.0" },
+    { name = "gitchangelog", marker = "extra == 'dev'", specifier = ">=3.0.4" },
+    { name = "gpxpy", specifier = ">=1.6.2" },
+    { name = "isort", marker = "extra == 'dev'", specifier = ">=6.0.1" },
+    { name = "mkdocs", marker = "extra == 'docs'", specifier = ">=1.6.1" },
+    { name = "mkdocs-awesome-nav", marker = "extra == 'docs'", specifier = ">=2.6.1" },
+    { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.16.0" },
+    { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=4.2.0" },
+    { name = "pygments", marker = "extra == 'docs'", specifier = ">=2.19.1" },
+    { name = "pyinstaller", marker = "extra == 'dev'", specifier = ">=5.8" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.4.0" },
+    { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=6.1.1" },
+    { name = "pytest-mock", marker = "extra == 'dev'", specifier = ">=3.14.1" },
+    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.11.13" },
+    { name = "shapely", specifier = ">=2.1.1" },
+    { name = "srtm-py", specifier = ">=0.3.7" },
+]
+provides-extras = ["dev", "docs"]
 
 [[package]]
 name = "gpxpy"
@@ -822,65 +892,6 @@ sdist = { url = "https://files.pythonhosted.org/packages/66/c0/0c8b6ad9f17a802ee
 wheels = [
     { url = "https://files.pythonhosted.org/packages/ec/57/56b9bcc3c9c6a792fcbaf139543cee77261f3651ca9da0c93f5c1221264b/python_dateutil-2.9.0.post0-py2.py3-none-any.whl", hash = "sha256:a8b2bc7bffae282281c8140a97d3aa9c14da0b136dfe83f850eea9a5f7470427", size = 229892, upload-time = "2024-03-01T18:36:18.57Z" },
 ]
-
-[[package]]
-name = "gpx-kml-converter"
-source = { editable = "." }
-dependencies = [
-    { name = "fastkml" },
-    { name = "gpxpy" },
-    { name = "pydantic" },
-    { name = "pyyaml" },
-    { name = "shapely" },
-    { name = "srtm-py" },
-]
-
-[package.optional-dependencies]
-dev = [
-    { name = "black" },
-    { name = "coverage" },
-    { name = "flake8" },
-    { name = "gitchangelog" },
-    { name = "isort" },
-    { name = "mypy" },
-    { name = "pre-commit" },
-    { name = "pyinstaller" },
-    { name = "pytest" },
-    { name = "pytest-cov" },
-    { name = "pytest-mock" },
-    { name = "ruff" },
-]
-docs = [
-    { name = "mkdocs" },
-    { name = "mkdocs-awesome-nav" },
-    { name = "pygments" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "black", marker = "extra == 'dev'", specifier = ">=25.1.0" },
-    { name = "coverage", marker = "extra == 'dev'", specifier = ">=7.8.2" },
-    { name = "fastkml", specifier = ">=1.1.0" },
-    { name = "flake8", marker = "extra == 'dev'", specifier = ">=7.2.0" },
-    { name = "gitchangelog", marker = "extra == 'dev'", specifier = ">=3.0.4" },
-    { name = "gpxpy", specifier = ">=1.6.2" },
-    { name = "isort", marker = "extra == 'dev'", specifier = ">=6.0.1" },
-    { name = "mkdocs", marker = "extra == 'docs'", specifier = ">=1.6.1" },
-    { name = "mkdocs-awesome-nav", marker = "extra == 'docs'", specifier = ">=2.6.1" },
-    { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.16.0" },
-    { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=4.2.0" },
-    { name = "pydantic", specifier = ">=2.11.7" },
-    { name = "pygments", marker = "extra == 'docs'", specifier = ">=2.19.1" },
-    { name = "pyinstaller", marker = "extra == 'dev'", specifier = ">=5.8" },
-    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.4.0" },
-    { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=6.1.1" },
-    { name = "pytest-mock", marker = "extra == 'dev'", specifier = ">=3.14.1" },
-    { name = "pyyaml", specifier = ">=6.0.2" },
-    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.11.13" },
-    { name = "shapely", specifier = ">=2.1.1" },
-    { name = "srtm-py", specifier = ">=0.3.7" },
-]
-provides-extras = ["dev", "docs"]
 
 [[package]]
 name = "pywin32-ctypes"

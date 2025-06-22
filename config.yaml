@@ -1,22 +1,96 @@
-app:
-  date_format: '%Y-%m-%d'
-  enable_console_logging: true
-  enable_file_logging: true
-  log_backup_count: 5
-  log_file_max_size: 10
-  log_format: detailed
-  log_level: INFO
-  max_workers: 4
+# Configuration File
+# This file was auto-generated. Modify as needed.
+
+# CLI Configuration
 cli:
-  elevation: false
-  extract_waypoints: true
+  # Path to input (file or folder)
+  # Type: str
   input: ''
-  min_dist: 55
+
+  # Path to output destination
+  # Type: str
   output: ''
+
+  # Maximum distance between two waypoints
+  # Type: int
+  min_dist: 20
+
+  # Extract starting points of each track as waypoint
+  # Choices: [True, False]
+  # Type: bool
+  extract_waypoints: True
+
+  # Include elevation data in waypoints
+  # Choices: [True, False]
+  # Type: bool
+  elevation: True
+
+
+# APP Configuration
+app:
+  # Date format to use
+  # Type: str
+  date_format: '%Y-%m-%d'
+
+  # Logging level for the application
+  # Choices: ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
+  # Type: str
+  log_level: 'INFO'
+
+  # Maximum log file size in MB before rotation
+  # Type: int
+  log_file_max_size: 10
+
+  # Number of backup log files to keep
+  # Type: int
+  log_backup_count: 5
+
+  # Log message format style
+  # Choices: ['simple', 'detailed', 'json']
+  # Type: str
+  log_format: 'detailed'
+
+  # Maximum number of worker threads
+  # Type: int
+  max_workers: 4
+
+  # Enable logging to file
+  # Choices: [True, False]
+  # Type: bool
+  enable_file_logging: True
+
+  # Enable logging to console
+  # Choices: [True, False]
+  # Type: bool
+  enable_console_logging: True
+
+
+# GUI Configuration
 gui:
-  auto_scroll_log: true
-  log_window_height: 200
-  max_log_lines: 1000
-  theme: light
-  window_height: 600
+  # GUI theme setting
+  # Choices: ['light', 'dark', 'auto']
+  # Type: str
+  theme: 'light'
+
+  # Default window width
+  # Type: int
   window_width: 800
+
+  # Default window height
+  # Type: int
+  window_height: 600
+
+  # Height of the log window in pixels
+  # Type: int
+  log_window_height: 200
+
+  # Automatically scroll to newest log entries
+  # Choices: [True, False]
+  # Type: bool
+  auto_scroll_log: True
+
+  # Maximum number of log lines to keep in GUI
+  # Type: int
+  max_log_lines: 1000
+
+

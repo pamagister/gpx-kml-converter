@@ -1,4 +1,4 @@
-"""Centralized logging configuration for gpx_kml_converter.
+"""Centralized logging configuration for python_template_project.
 
 This module provides a unified logging setup that supports:
 - File logging with rotation
@@ -12,7 +12,7 @@ import logging.handlers
 import sys
 from pathlib import Path
 
-from gpx_kml_converter.config.config import ConfigParameterManager
+from config_cli_gui.config_framework import ConfigManager
 
 
 class GuiLogHandler(logging.Handler):
@@ -39,7 +39,7 @@ class GuiLogHandler(logging.Handler):
 class LoggerManager:
     """Manages all logging configuration and handlers."""
 
-    def __init__(self, config: ConfigParameterManager):
+    def __init__(self, config: ConfigManager):
         self.config = config
         self.logger = logging.getLogger("gpx_kml_converter")
         self.gui_handler = None
@@ -53,7 +53,7 @@ class LoggerManager:
         self.logger.handlers.clear()
 
         # Set log level from config
-        log_level = getattr(logging, self.config.app.log_level.default.upper())
+        log_level = getattr(logging, self.config.get_category("app").log_level.default.upper())
         self.logger.setLevel(log_level)
 
         # Create formatters
@@ -142,15 +142,15 @@ class LoggerManager:
         self.logger.setLevel(log_level)
 
         # Update config
-        self.config.app.log_level.default = level.upper()
+        self.config.get_category("app").log_level.default = level.upper()
 
     def log_config_summary(self):
         """Log current configuration summary."""
         self.logger.info("=== Configuration Summary ===")
-        self.logger.info(f"Log level: {self.config.app.log_level.default}")
-        self.logger.info(f"Input: {self.config.cli.input.default}")
-        self.logger.info(f"Output: {self.config.cli.output.default}")
-        self.logger.info(f"Max workers: {self.config.app.max_workers.default}")
+        self.logger.info(f"Log level: {self.config.get_category('app').log_level.default}")
+        self.logger.info(f"Input: {self.config.get_category('cli').input.default}")
+        self.logger.info(f"Output: {self.config.get_category('cli').output.default}")
+        self.logger.info(f"Max workers: {self.config.get_category('app').max_workers.default}")
         self.logger.info("==============================")
 
 
@@ -158,7 +158,7 @@ class LoggerManager:
 _logger_manager = None
 
 
-def initialize_logging(config: ConfigParameterManager) -> LoggerManager:
+def initialize_logging(config: ConfigManager) -> LoggerManager:
     """Initialize the global logging system.
 
     Args:

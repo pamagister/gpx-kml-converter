@@ -1,110 +1,15 @@
-"""Auto-generated CLI interface for gpx-kml-converter project.
+"""CLI interface for python-template-project using the generic config framework.
 
-This file was generated from config.py parameter definitions.
-Do not modify manually - regenerate using ConfigParameterManager CLI generation methods.
-
-run cli: python -m gpx_kml_converter.cli
+This file uses the CliGenerator from the generic config framework.
 """
 
-import argparse
-import traceback
 from pathlib import Path
-from typing import Any
+
+from config_cli_gui.cli_generator import CliGenerator
 
 from gpx_kml_converter.config.config import ConfigParameterManager
 from gpx_kml_converter.core.base import BaseGPXProcessor
 from gpx_kml_converter.core.logging import initialize_logging
-
-
-def parse_arguments():
-    """Parse command line arguments with config file support."""
-    parser = argparse.ArgumentParser(
-        description="Process input files",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
-Examples:
-  python -m gpx_kml_converter.cli input.txt
-  python -m gpx_kml_converter.cli --output result.txt input.txt
-  python -m gpx_kml_converter.cli --config custom_config.yaml input.txt
-        """,
-    )
-
-    # Config file argument
-    parser.add_argument(
-        "--config",
-        default=None,
-        help="Path to configuration file (JSON or YAML)",
-    )
-
-    # Verbose/quiet options for log level override
-    parser.add_argument(
-        "-v", "--verbose", action="store_true", help="Enable verbose logging (DEBUG level)"
-    )
-    parser.add_argument(
-        "-q", "--quiet", action="store_true", help="Enable quiet mode (WARNING level only)"
-    )
-
-    # Get CLI parameters from ConfigParameterManager
-    config_manager = ConfigParameterManager()
-    cli_params = config_manager.get_cli_parameters()
-
-    # Generate arguments from CLI config parameters
-    for param in cli_params:
-        if param.required and param.cli_arg is None:
-            # Positional argument (like 'input')
-            parser.add_argument(param.name, help=param.help)
-        else:
-            # Optional argument
-            kwargs = {
-                "default": argparse.SUPPRESS,  # Don't set default here, handle in config
-                "help": f"{param.help} (default: {param.default})",
-            }
-
-            # Handle different parameter types
-            if param.choices and not param.type_ == bool:
-                kwargs["choices"] = param.choices
-
-            if param.type_ == int:
-                kwargs["type"] = int
-            if param.type_ == float:
-                kwargs["type"] = float
-            elif param.type_ == bool:
-                kwargs["action"] = "store_true" if not param.default else "store_false"
-                kwargs["help"] = f"{param.help} (default: {param.default})"
-            elif param.type_ == str:
-                kwargs["type"] = str
-
-            parser.add_argument(param.cli_arg, **kwargs)
-
-    return parser.parse_args()
-
-
-def create_config_overrides(args: argparse.Namespace) -> dict[str, Any]:
-    """Create configuration overrides from CLI arguments.
-
-    Args:
-        args: Parsed command line arguments
-
-    Returns:
-        Dictionary with CLI parameter overrides in format cli__parameter_name
-    """
-    config_manager = ConfigParameterManager()
-    cli_params = config_manager.get_cli_parameters()
-    overrides = {}
-
-    for param in cli_params:
-        if hasattr(args, param.name):
-            arg_value = getattr(args, param.name)
-            # Add CLI category prefix for override system
-            overrides[f"cli__{param.name}"] = arg_value
-
-    # Handle log level overrides from verbose/quiet flags
-    if hasattr(args, "verbose") and args.verbose:
-        overrides["app__log_level"] = "DEBUG"
-    elif hasattr(args, "quiet") and args.quiet:
-        overrides["app__log_level"] = "WARNING"
-
-    return overrides
 
 
 def validate_config(config: ConfigParameterManager, logger) -> bool:
@@ -117,13 +22,20 @@ def validate_config(config: ConfigParameterManager, logger) -> bool:
     Returns:
         True if configuration is valid, False otherwise
     """
-    # Check required parameters
-    if not config.cli.input.default:
+    # Get CLI category and check required parameters
+    cli_category = config.get_cli_category()
+    if not cli_category:
+        logger.error("No CLI configuration found")
+        return False
+
+    # Check if input parameter exists and has a value
+    input_param = getattr(cli_category, "input", None)
+    if not input_param or not input_param.default:
         logger.error("Input is required")
         return False
 
     # Check if input file exists
-    input_path = Path(config.cli.input.default)
+    input_path = Path(input_param.default)
     if not input_path.exists():
         logger.error(f"File not found: {input_path}")
         return False
@@ -132,30 +44,22 @@ def validate_config(config: ConfigParameterManager, logger) -> bool:
     return True
 
 
-def main():
-    """Main entry point for the CLI application."""
-    logger = None
+def run_main_processing(config: ConfigParameterManager) -> int:
+    """Main processing function that gets called by the CLI generator.
+
+    Args:
+        config: Configuration manager with all settings
+
+    Returns:
+        Exit code (0 for success, non-zero for error)
+    """
+    # Initialize logging system
+    logger_manager = initialize_logging(config)
+    logger = logger_manager.get_logger("python_template_project.cli")
 
     try:
-        # Parse command line arguments
-        args = parse_arguments()
-
-        # Create configuration overrides from CLI arguments
-        cli_overrides = create_config_overrides(args)
-
-        # Create config object with file and CLI overrides
-        config = ConfigParameterManager(
-            config_file=args.config if hasattr(args, "config") and args.config else None,
-            **cli_overrides,
-        )
-
-        # Initialize logging system
-        logger_manager = initialize_logging(config)
-        logger = logger_manager.get_logger()
-
         # Log startup information
-        logger.info("Starting gpx_kml_converter CLI")
-        logger.debug(f"Command line arguments: {vars(args)}")
+        logger.info("Starting python_template_project CLI")
         logger_manager.log_config_summary()
 
         # Validate configuration
@@ -163,52 +67,64 @@ def main():
             logger.error("Configuration validation failed")
             return 1
 
-        logger.info(f"Processing input: {config.cli.input.default}")
+        # Get CLI parameters
+        cli_category = config.get_cli_category()
+        input_file = cli_category.input.default
+        output_file = cli_category.output.default
+        min_dist = cli_category.min_dist.default
+        extract_waypoints = cli_category.extract_waypoints.default
+
+        # Get app parameters
+        app_category = config.get_category("app")
+        date_format = app_category.date_format.default if app_category else "%Y-%m-%d"
+
+        logger.info(f"Processing input: {input_file}")
 
         # Create and run BaseGPXProcessor
-        project = BaseGPXProcessor(
-            config.cli.input.default,
-            config.cli.output.default,
-            config.cli.min_dist.default,
-            config.cli.extract_waypoints.default,
-            config.app.date_format.default,
+        processor = BaseGPXProcessor(
+            input_=input_file,
+            output=output_file,
+            min_dist=min_dist,
+            date_format=date_format,
+            elevation=extract_waypoints,
+            logger=logger,
         )
 
         logger.info("Starting conversion process")
 
-        project.compress_files()
+        # Run the processing (adjust method name based on your actual implementation)
+        result_files = processor.compress_files()
 
-        logger.info(f"Successfully processed: {config.cli.input.default}")
-        if config.cli.output.default:
-            logger.info(f"Output written to: {config.cli.output.default}")
+        logger.info(f"Successfully processed: {input_file}")
+        if output_file:
+            logger.info(f"Output written to: {output_file}")
+        if result_files:
+            logger.info(f"Generated files: {', '.join(result_files)}")
 
         logger.info("CLI processing completed successfully")
         return 0
 
-    except FileNotFoundError as e:
-        if logger:
-            logger.error(f"File not found: {e}")
-            logger.debug("Full traceback:", exc_info=True)
-        else:
-            print(f"Error: {e}")
-            traceback.print_exc()
-        return 1
-
-    except KeyboardInterrupt:
-        if logger:
-            logger.warning("Process interrupted by user")
-        else:
-            print("Process interrupted by user")
-        return 130  # Standard exit code for SIGINT
-
     except Exception as e:
-        if logger:
-            logger.error(f"Unexpected error: {e}")
-            logger.debug("Full traceback:", exc_info=True)
-        else:
-            print(f"Unexpected error: {e}")
-            traceback.print_exc()
+        logger.error(f"Processing failed: {e}")
+        logger.debug("Full traceback:", exc_info=True)
         return 1
+
+
+def main():
+    """Main entry point for the CLI application."""
+    # Create the base configuration manager
+    config_manager = ConfigParameterManager()
+
+    # Create CLI generator
+    cli_generator = CliGenerator(config_manager=config_manager, app_name="python_template_project")
+
+    # Run the CLI with our main processing function
+    return cli_generator.run_cli(
+        main_function=run_main_processing,
+        description="Process GPX files with various operations like compression, "
+        "merging, and POI extraction",
+        validator=validate_config,
+    )
 
 
 if __name__ == "__main__":
