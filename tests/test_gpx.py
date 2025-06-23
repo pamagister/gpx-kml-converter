@@ -7,7 +7,7 @@ from pathlib import Path
 import gpxpy
 from gpxpy.gpx import GPXTrackPoint
 
-from gpx_kml_converter.config.config import ConfigParameterManager
+from gpx_kml_converter.config.config import ProjectConfigManager
 from gpx_kml_converter.core.logging import initialize_logging
 from src.gpx_kml_converter.core.base import BaseGPXProcessor
 
@@ -29,7 +29,7 @@ class TestGPXProcessor(unittest.TestCase):
         self.output_dir = project_root / "test_output"
         # Ensure the output directory exists
         self.output_dir.mkdir(parents=True, exist_ok=True)
-        self.logger = initialize_logging(ConfigParameterManager()).get_logger("TestGPXProcessor")
+        self.logger = initialize_logging(ProjectConfigManager()).get_logger("TestGPXProcessor")
 
         self.processor = BaseGPXProcessor(
             input_=str(self.test_gpx_file),

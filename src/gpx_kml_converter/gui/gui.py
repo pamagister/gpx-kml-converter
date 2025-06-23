@@ -17,9 +17,9 @@ from functools import partial
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 
-from config_cli_gui.gui_generator import SettingsDialogGenerator
+from config_cli_gui.gui import SettingsDialogGenerator
 
-from gpx_kml_converter.config.config import ConfigParameterManager
+from gpx_kml_converter.config.config import ProjectConfigManager
 from gpx_kml_converter.core.base import BaseGPXProcessor
 from gpx_kml_converter.core.logging import (
     connect_gui_logging,
@@ -116,7 +116,7 @@ class MainGui:
         self.root.geometry("1200x600")  # Increased width for new layout
 
         # Initialize configuration
-        self.config_manager = ConfigParameterManager("config.yaml")
+        self.config_manager = ProjectConfigManager("config.yaml")
 
         # Initialize logging system
         self.logger_manager = initialize_logging(self.config_manager)

@@ -12,7 +12,7 @@ import logging.handlers
 import sys
 from pathlib import Path
 
-from config_cli_gui.config_framework import ConfigManager
+from config_cli_gui.config import ConfigManager
 
 
 class GuiLogHandler(logging.Handler):

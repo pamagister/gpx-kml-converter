@@ -5,14 +5,14 @@ This file uses the CliGenerator from the generic config framework.
 
 from pathlib import Path
 
-from config_cli_gui.cli_generator import CliGenerator
+from config_cli_gui.cli import CliGenerator
 
-from gpx_kml_converter.config.config import ConfigParameterManager
+from gpx_kml_converter.config.config import ProjectConfigManager
 from gpx_kml_converter.core.base import BaseGPXProcessor
 from gpx_kml_converter.core.logging import initialize_logging
 
 
-def validate_config(config: ConfigParameterManager, logger) -> bool:
+def validate_config(config: ProjectConfigManager, logger) -> bool:
     """Validate the configuration parameters.
 
     Args:
@@ -23,7 +23,7 @@ def validate_config(config: ConfigParameterManager, logger) -> bool:
         True if configuration is valid, False otherwise
     """
     # Get CLI category and check required parameters
-    cli_category = config.get_cli_category()
+    cli_category = config.get_category("cli")
     if not cli_category:
         logger.error("No CLI configuration found")
         return False
@@ -44,7 +44,7 @@ def validate_config(config: ConfigParameterManager, logger) -> bool:
     return True
 
 
-def run_main_processing(config: ConfigParameterManager) -> int:
+def run_main_processing(config: ProjectConfigManager) -> int:
     """Main processing function that gets called by the CLI generator.
 
     Args:
@@ -68,7 +68,7 @@ def run_main_processing(config: ConfigParameterManager) -> int:
             return 1
 
         # Get CLI parameters
-        cli_category = config.get_cli_category()
+        cli_category = config.get_category("cli")
         input_file = cli_category.input.default
         output_file = cli_category.output.default
         min_dist = cli_category.min_dist.default
@@ -113,7 +113,7 @@ def run_main_processing(config: ConfigParameterManager) -> int:
 def main():
     """Main entry point for the CLI application."""
     # Create the base configuration manager
-    config_manager = ConfigParameterManager()
+    config_manager = ProjectConfigManager()
 
     # Create CLI generator
     cli_generator = CliGenerator(config_manager=config_manager, app_name="python_template_project")
