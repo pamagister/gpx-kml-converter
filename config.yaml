@@ -1,96 +1,41 @@
-# Configuration File
-# This file was auto-generated. Modify as needed.
-
-# CLI Configuration
-cli:
-  # Path to input (file or folder)
-  # Type: str
-  input: ''
-
-  # Path to output destination
-  # Type: str
-  output: ''
-
-  # Maximum distance between two waypoints
-  # Type: int
-  min_dist: 20
-
-  # Extract starting points of each track as waypoint
-  # Choices: [True, False]
-  # Type: bool
-  extract_waypoints: True
-
-  # Include elevation data in waypoints
-  # Choices: [True, False]
-  # Type: bool
-  elevation: True
-
-
-# APP Configuration
 app:
-  # Date format to use
-  # Type: str
+  # Date format to use | type=ConfigParameter, default=%Y-%m-%d
   date_format: '%Y-%m-%d'
-
-  # Logging level for the application
-  # Choices: ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
-  # Type: str
-  log_level: 'INFO'
-
-  # Maximum log file size in MB before rotation
-  # Type: int
-  log_file_max_size: 10
-
-  # Number of backup log files to keep
-  # Type: int
+  # Enable logging to console | type=ConfigParameter, default=True
+  enable_console_logging: true
+  # Enable logging to file | type=ConfigParameter, default=True
+  enable_file_logging: true
+  # Number of backup log files to keep | type=ConfigParameter, default=5
   log_backup_count: 5
-
-  # Log message format style
-  # Choices: ['simple', 'detailed', 'json']
-  # Type: str
-  log_format: 'detailed'
-
-  # Maximum number of worker threads
-  # Type: int
+  # Maximum log file size in MB before rotation | type=ConfigParameter, default=10
+  log_file_max_size: 10
+  # Log message format style | type=ConfigParameter, default=detailed
+  log_format: detailed
+  # Logging level for the application | type=ConfigParameter, default=INFO
+  log_level: INFO
+  # Maximum number of worker threads | type=ConfigParameter, default=4
   max_workers: 4
-
-  # Enable logging to file
-  # Choices: [True, False]
-  # Type: bool
-  enable_file_logging: True
-
-  # Enable logging to console
-  # Choices: [True, False]
-  # Type: bool
-  enable_console_logging: True
-
-
-# GUI Configuration
+cli:
+  # Include elevation data in waypoints | type=ConfigParameter, default=False
+  elevation: false
+  # Extract starting points of each track as waypoint | type=ConfigParameter, default=True
+  extract_waypoints: true
+  # Path to input (file or folder) | type=ConfigParameter, default=
+  input: ''
+  # Maximum distance between two waypoints | type=ConfigParameter, default=20
+  min_dist: 20
+  # Path to output destination | type=ConfigParameter, default=
+  output: ''
 gui:
-  # GUI theme setting
-  # Choices: ['light', 'dark', 'auto']
-  # Type: str
-  theme: 'light'
-
-  # Default window width
-  # Type: int
-  window_width: 800
-
-  # Default window height
-  # Type: int
-  window_height: 600
-
-  # Height of the log window in pixels
-  # Type: int
+  # Automatically scroll to newest log entries | type=ConfigParameter, default=True
+  auto_scroll_log: true
+  # Height of the log window in pixels | type=ConfigParameter, default=200
   log_window_height: 200
-
-  # Automatically scroll to newest log entries
-  # Choices: [True, False]
-  # Type: bool
-  auto_scroll_log: True
-
-  # Maximum number of log lines to keep in GUI
-  # Type: int
+  # Maximum number of log lines to keep in GUI | type=ConfigParameter, default=1000
   max_log_lines: 1000
-
-
+  # GUI theme setting | type=ConfigParameter, default=light
+  theme: light
+  # Default window height | type=ConfigParameter, default=600
+  window_height: 600
+  # Default window width | type=ConfigParameter, default=800
+  window_width: 800
