@@ -148,15 +148,15 @@ wheels = [
 
 [[package]]
 name = "config-cli-gui"
-version = "0.1.3"
+version = "0.1.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "pydantic" },
     { name = "pyyaml" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/4f/b1/1a9689bdcbfa84a22389f6c1ff09c486d57c68007528c0278544b6443bbe/config_cli_gui-0.1.3.tar.gz", hash = "sha256:b0c5e7018a03feb2ef2f1d39c037c01d4ecfa454b39a848f87476c0cd1a0f3ce", size = 179898, upload-time = "2025-06-23T21:46:27.985Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/3b/40/a862053e1b21c1d4f3c223ae268e63edbce6a52169d32c42f2dddc4fc504/config_cli_gui-0.1.4.tar.gz", hash = "sha256:c29944bdbfab4c6fa1f7b3a307c9888ac45da8d8b6d32dbe0d1662edf318ae5d", size = 109230, upload-time = "2025-06-23T22:21:45.066Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ad/e4/65dea20f05a41bcd19e559fd34ce64ddfed9a665a90d0ae42d2bf1c74550/config_cli_gui-0.1.3-py3-none-any.whl", hash = "sha256:0bc563159da56d1a4199b2968e82a4b90264e84147bc5c25dbde5f120fffda33", size = 17835, upload-time = "2025-06-23T21:46:26.844Z" },
+    { url = "https://files.pythonhosted.org/packages/94/e9/c04146655bb16930d2768684b1cbc88244fde6724297cf2c13727ee68e14/config_cli_gui-0.1.4-py3-none-any.whl", hash = "sha256:dfbe6d7416da29badc195ddd81b9ff57ce2a08929f7ccef0c7b3aee16a4b9d0b", size = 17847, upload-time = "2025-06-23T22:21:44.139Z" },
 ]
 
 [[package]]
@@ -309,7 +309,7 @@ docs = [
 [package.metadata]
 requires-dist = [
     { name = "black", marker = "extra == 'dev'", specifier = ">=25.1.0" },
-    { name = "config-cli-gui", specifier = ">=0.1.3" },
+    { name = "config-cli-gui", specifier = ">=0.1.4" },
     { name = "coverage", marker = "extra == 'dev'", specifier = ">=7.8.2" },
     { name = "fastkml", specifier = ">=1.1.0" },
     { name = "flake8", marker = "extra == 'dev'", specifier = ">=7.2.0" },

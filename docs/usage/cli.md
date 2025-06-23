@@ -26,19 +26,33 @@ python -m gpx_kml_converter.cli [OPTIONS] input
 python -m gpx_kml_converter.cli input
 ```
 
-### 2. With min_dist parameter
+### 2. With verbose logging
+
+```bash
+python -m gpx_kml_converter.cli -v input
+python -m gpx_kml_converter.cli --verbose input
+```
+
+### 3. With quiet mode
+
+```bash
+python -m gpx_kml_converter.cli -q input
+python -m gpx_kml_converter.cli --quiet input
+```
+
+### 4. With min_dist parameter
 
 ```bash
 python -m gpx_kml_converter.cli --min_dist 20 input
 ```
 
-### 3. With extract_waypoints parameter
+### 5. With extract_waypoints parameter
 
 ```bash
 python -m gpx_kml_converter.cli --extract_waypoints True input
 ```
 
-### 4. With elevation parameter
+### 6. With elevation parameter
 
 ```bash
 python -m gpx_kml_converter.cli --elevation True input
