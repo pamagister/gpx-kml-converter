@@ -17,6 +17,25 @@ from functools import partial
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 
+# Matplotlib imports for plotting
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
+
+# Geopandas and shapely for geographical data handling
+try:
+    import geopandas as gpd
+    from shapely.geometry import LineString, Point
+
+    GEOPANDAS_AVAILABLE = True
+except ImportError:
+    GEOPANDAS_AVAILABLE = False
+    gpd = None
+    Point = None
+    LineString = None
+    print("Warning: geopandas not available. Plotting functionality will be limited.")
+
+
+import gpxpy  # Import gpxpy directly for metadata extraction
 from config_cli_gui.gui import SettingsDialogGenerator
 
 from gpx_kml_converter.config.config import ProjectConfigManager
@@ -113,7 +132,7 @@ class MainGui:
     def __init__(self, root):
         self.root = root
         self.root.title("gpx-kml-converter")
-        self.root.geometry("1200x600")  # Increased width for new layout
+        self.root.geometry("1400x800")  # Increased width and height for new layout
 
         # Initialize configuration
         self.config_manager = ProjectConfigManager("config.yaml")
@@ -125,6 +144,16 @@ class MainGui:
         # File lists
         self.input_files = []
         self.output_files = []
+        self._last_selected_file_path = (
+            None  # To store path of file currently shown in metadata/plot
+        )
+
+        # Matplotlib elements
+        self.fig = None
+        self.ax = None
+        self.canvas = None
+        self.toolbar = None
+        self.country_borders_gdf = None  # GeoDataFrame for country borders
 
         self._build_widgets()
         self._create_menu()
@@ -138,51 +167,90 @@ class MainGui:
         self.logger.info("GUI application started")
         self.logger_manager.log_config_summary()
 
+        # Load country borders once at startup if geopandas is available
+        if GEOPANDAS_AVAILABLE:
+            try:
+                # Assuming the shapefile is relative to the script's location or project root
+                # Adjust based on actual project structure.
+                # Path from gui.py to project root is ../../../
+                script_dir = Path(__file__).parent.parent.parent.parent
+                shp_path = (
+                    script_dir
+                    / "res"
+                    / "maps"
+                    / "ne_50m_admin_0_countries"
+                    / "ne_50m_admin_0_countries.shp"
+                )
+                if shp_path.exists():
+                    self.country_borders_gdf = gpd.read_file(shp_path)
+                    self.logger.info(f"Loaded country borders from: {shp_path}")
+                else:
+                    self.logger.warning(f"Country borders shapefile not found at: {shp_path}")
+            except Exception as e:
+                self.logger.error(f"Error loading country borders shapefile: {e}")
+                self.country_borders_gdf = None
+
     def _build_widgets(self):
         """Build the main GUI widgets."""
-        # Main container
+        # Main container frame
         main_frame = ttk.Frame(self.root)
         main_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
 
-        # Top frame for file lists and buttons
-        top_frame = ttk.Frame(main_frame)
-        top_frame.pack(fill=tk.BOTH, expand=True)
+        # Use a grid layout for the main content area
+        main_frame.grid_columnconfigure(0, weight=1)  # Input files (1/3)
+        main_frame.grid_columnconfigure(1, weight=1)  # Middle section (2/3)
+        main_frame.grid_columnconfigure(2, weight=1)  # Output files (1/3)
+        main_frame.grid_rowconfigure(0, weight=3)  # Top section (buttons, metadata, lists)
+        main_frame.grid_rowconfigure(1, weight=5)  # Plot section (larger)
+        main_frame.grid_rowconfigure(2, weight=2)  # Log output (smaller)
 
-        # Left side - Input File list
-        input_file_frame = ttk.LabelFrame(top_frame, text="Input Files")
-        input_file_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 5))
+        # Input File list (Left Column - Spans two rows for better height)
+        input_file_frame = ttk.LabelFrame(main_frame, text="Input Files")
+        input_file_frame.grid(row=0, column=0, rowspan=2, sticky="nsew", padx=(0, 5), pady=0)
 
         self.input_file_listbox = tk.Listbox(input_file_frame, selectmode=tk.EXTENDED)
         input_file_scrollbar = ttk.Scrollbar(
             input_file_frame, orient="vertical", command=self.input_file_listbox.yview
         )
         self.input_file_listbox.configure(yscrollcommand=input_file_scrollbar.set)
-
         self.input_file_listbox.pack(side="left", fill="both", expand=True, padx=5, pady=5)
         input_file_scrollbar.pack(side="right", fill="y", pady=5)
         self.input_file_listbox.bind(
             "<Double-Button-1>", lambda event: self._open_selected_file(event, self.input_files)
         )
+        self.input_file_listbox.bind(
+            "<<ListboxSelect>>", lambda event: self._on_file_selection(event, self.input_files)
+        )
 
-        # Middle - Output File list
-        output_file_frame = ttk.LabelFrame(top_frame, text="Generated Files")
-        output_file_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(5, 5))
+        # Output File list (Right Column - Spans two rows for better height)
+        output_file_frame = ttk.LabelFrame(main_frame, text="Generated Files")
+        output_file_frame.grid(row=0, column=2, rowspan=2, sticky="nsew", padx=(5, 0), pady=0)
 
         self.output_file_listbox = tk.Listbox(output_file_frame)
         output_file_scrollbar = ttk.Scrollbar(
             output_file_frame, orient="vertical", command=self.output_file_listbox.yview
         )
         self.output_file_listbox.configure(yscrollcommand=output_file_scrollbar.set)
-
         self.output_file_listbox.pack(side="left", fill="both", expand=True, padx=5, pady=5)
         output_file_scrollbar.pack(side="right", fill="y", pady=5)
         self.output_file_listbox.bind(
             "<Double-Button-1>", lambda event: self._open_selected_file(event, self.output_files)
         )
+        self.output_file_listbox.bind(
+            "<<ListboxSelect>>", lambda event: self._on_file_selection(event, self.output_files)
+        )
 
-        # Right side - Buttons
-        button_frame = ttk.Frame(top_frame)
-        button_frame.pack(side=tk.RIGHT, fill=tk.Y, padx=(5, 0))
+        # Middle section: Buttons and Metadata (Top-Middle)
+        middle_top_frame = ttk.Frame(main_frame)
+        middle_top_frame.grid(row=0, column=1, sticky="nsew", padx=5, pady=0)
+        middle_top_frame.grid_columnconfigure(0, weight=1)  # Buttons column
+        middle_top_frame.grid_columnconfigure(1, weight=2)  # Metadata column (wider)
+        middle_top_frame.grid_rowconfigure(0, weight=1)  # Single row for this section
+
+        # Buttons Frame (Left of middle_top_frame)
+        button_frame = ttk.Frame(middle_top_frame)
+        button_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 5), pady=0)  # Aligned left
+        button_frame.grid_rowconfigure(8, weight=1)  # Allow progress bar to take space
 
         open_button = ttk.Button(button_frame, text="Open Files", command=self._open_files)
         open_button.pack(pady=8, fill=tk.X)
@@ -192,17 +260,14 @@ class MainGui:
         )
         remove_selected_button.pack(pady=1, fill=tk.X)
 
-        # Create buttons dynamically
         self.run_buttons = {}
         for mode, label in self.processing_modes:
             button = ttk.Button(
                 button_frame, text=label, command=partial(self._run_processing, mode=mode)
             )
             button.pack(pady=1, fill=tk.X)
-            # Save buttons in dictionary for later access
             self.run_buttons[mode] = button
 
-        # Clear files button
         self.clear_input_button = ttk.Button(
             button_frame, text="Clear Input Files", command=self._clear_input_files
         )
@@ -213,34 +278,70 @@ class MainGui:
         )
         self.clear_output_button.pack(pady=1, fill=tk.X)
 
-        # Progress bar
         self.progress = ttk.Progressbar(button_frame, mode="indeterminate")
         self.progress.pack(pady=5, fill=tk.X)
 
-        # Bottom frame - Log output
+        # Metadata Display Sub-frame (Right of middle_top_frame)
+        metadata_frame = ttk.LabelFrame(middle_top_frame, text="File Metadata")
+        metadata_frame.grid(row=0, column=1, sticky="nsew", padx=(5, 0), pady=0)
+        metadata_frame.grid_rowconfigure(0, weight=1)  # Make text widget expand
+        metadata_frame.grid_columnconfigure(0, weight=1)
+
+        self.metadata_text = tk.Text(metadata_frame, wrap=tk.WORD, state=tk.DISABLED)
+        metadata_scrollbar = ttk.Scrollbar(
+            metadata_frame, orient="vertical", command=self.metadata_text.yview
+        )
+        self.metadata_text.configure(yscrollcommand=metadata_scrollbar.set)
+        self.metadata_text.grid(row=0, column=0, sticky="nsew", padx=5, pady=5)
+        metadata_scrollbar.grid(row=0, column=1, sticky="ns", pady=5)
+
+        # Matplotlib Plot Sub-frame (Middle-Bottom)
+        plot_frame = ttk.LabelFrame(main_frame, text="Map Visualization")
+        plot_frame.grid(row=1, column=1, sticky="nsew", padx=5, pady=(5, 0))
+        plot_frame.grid_rowconfigure(0, weight=1)  # Canvas
+        plot_frame.grid_rowconfigure(1, weight=0)  # Toolbar
+        plot_frame.grid_columnconfigure(0, weight=1)
+
+        # Setup Matplotlib figure and canvas
+        self.fig, self.ax = plt.subplots(figsize=(8, 6))  # Initial size, will expand
+        self.fig.set_facecolor("#EEEEEE")  # Light grey background for the figure
+        self.canvas = FigureCanvasTkAgg(self.fig, master=plot_frame)
+        self.canvas_widget = self.canvas.get_tk_widget()
+        self.canvas_widget.grid(row=0, column=0, sticky="nsew")
+
+        # Add Matplotlib toolbar
+        self.toolbar = NavigationToolbar2Tk(self.canvas, plot_frame, pack_toolbar=False)
+        self.toolbar.update()
+        self.toolbar.grid(row=1, column=0, sticky="ew")  # Position toolbar below canvas
+        self.canvas_widget.config(cursor="hand2")  # Change cursor when hovering over plot
+
+        self.ax.set_facecolor("#EEEEEE")  # Light grey background for the axes
+        self.ax.tick_params(
+            left=False, right=False, labelleft=False, labelbottom=False, bottom=False
+        )  # Hide axis labels and ticks
+
+        # Log output (Bottom section, spanning all columns)
         log_frame = ttk.LabelFrame(main_frame, text="Log Output")
-        log_frame.pack(fill=tk.BOTH, expand=True, pady=(5, 0))
+        log_frame.grid(row=2, column=0, columnspan=3, rowspan=2, sticky="nsew", padx=0, pady=(5, 0))
+        log_frame.grid_rowconfigure(0, weight=3)  # Text widget
+        log_frame.grid_columnconfigure(0, weight=3)  # Text widget
+        log_frame.grid_rowconfigure(1, weight=0)  # Controls
 
-        # Log text widget with scrollbar
-        log_text_frame = ttk.Frame(log_frame)
-        log_text_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
-
-        self.log_text = tk.Text(log_text_frame, height=10, wrap=tk.WORD)
+        self.log_text = tk.Text(log_frame, height=10, wrap=tk.WORD)
         log_text_scrollbar = ttk.Scrollbar(
-            log_text_frame, orient="vertical", command=self.log_text.yview
+            log_frame, orient="vertical", command=self.log_text.yview
         )
         self.log_text.configure(yscrollcommand=log_text_scrollbar.set)
 
-        self.log_text.pack(side="left", fill="both", expand=True)
-        log_text_scrollbar.pack(side="right", fill="y")
+        self.log_text.grid(row=0, column=0, sticky="nsew", padx=5, pady=5)
+        log_text_scrollbar.grid(row=0, column=1, sticky="ns", pady=5)
 
         # Log controls
         log_controls = ttk.Frame(log_frame)
-        log_controls.pack(fill=tk.X, padx=5, pady=(0, 5))
+        log_controls.grid(row=1, column=0, columnspan=2, sticky="ew", padx=5, pady=(0, 5))
 
         ttk.Button(log_controls, text="Clear Log", command=self._clear_log).pack(side=tk.LEFT)
 
-        # Log level selector
         ttk.Label(log_controls, text="Log Level:").pack(side=tk.LEFT, padx=(10, 5))
         self.log_level_var = tk.StringVar(
             value=self.config_manager.get_category("app").log_level.default
@@ -309,12 +410,14 @@ class MainGui:
         self.input_files.clear()
         self.input_file_listbox.delete(0, tk.END)
         self.logger.info("Input file list cleared")
+        self._clear_metadata_and_plot()  # Clear plot and metadata when input files are cleared
 
     def _clear_output_files(self):
         """Clear the output file list."""
         self.output_files.clear()
         self.output_file_listbox.delete(0, tk.END)
         self.logger.info("Generated file list cleared")
+        self._clear_metadata_and_plot()  # Clear plot and metadata when output files are cleared
 
     def _remove_selected_input_files(self):
         """Remove selected files from the input file list."""
@@ -325,12 +428,26 @@ class MainGui:
 
         # Delete from listbox from end to start to avoid index issues
         for i in reversed(selected_indices):
+            # If the removed file was the one currently displayed, clear metadata/plot
+            if self.input_files[i]["path"] == self._last_selected_file_path:
+                self._clear_metadata_and_plot()
             self.input_file_listbox.delete(i)
             del self.input_files[i]
         self.logger.info(f"Removed {len(selected_indices)} selected input files.")
 
+    def _on_file_selection(self, event, file_list_source):
+        """Handle selection change in file listboxes to update metadata/plot."""
+        selected_indices = event.widget.curselection()
+        if selected_indices:
+            index = selected_indices[0]  # Get the first selected item
+            file_path_str = file_list_source[index]["path"]
+            self._parse_and_display_file(Path(file_path_str))
+        else:
+            self._clear_metadata_and_plot()
+
     def _open_selected_file(self, event, file_list_source):
-        """Opens the selected file in the system's default application or explorer."""
+        """Opens the selected file in the system's default application or explorer.
+        Also triggers parsing and display for the selected file."""
         selection_index = event.widget.nearest(event.y)
         if selection_index == -1:  # No item clicked
             return
@@ -354,6 +471,9 @@ class MainGui:
         except Exception as e:
             self.logger.error(f"Could not open file {file_path}: {e}")
             messagebox.showerror("Error", f"Could not open file {file_path}: {e}")
+
+        # After opening, also parse and display it in the GUI
+        self._parse_and_display_file(file_path)
 
     def _open_files(self):
         """Open file dialog and add files to list."""
@@ -525,6 +645,249 @@ class MainGui:
         disconnect_gui_logging()
         self.root.quit()
         self.root.destroy()
+
+    def _clear_metadata_and_plot(self):
+        """Clears the metadata text and the matplotlib plot."""
+        self.metadata_text.config(state=tk.NORMAL)
+        self.metadata_text.delete(1.0, tk.END)
+        self.metadata_text.config(state=tk.DISABLED)
+
+        self.ax.clear()
+        self.ax.set_facecolor("#EEEEEE")  # Reset background
+        self.ax.tick_params(
+            left=False, right=False, labelleft=False, labelbottom=False, bottom=False
+        )  # Hide axis labels and ticks
+        self.canvas.draw()
+        self._last_selected_file_path = None
+        self.logger.debug("Cleared metadata display and plot.")
+
+    def _parse_and_display_file(self, file_path: Path):
+        """Parses a GPX/KML file and updates the metadata display and plot."""
+        if not GEOPANDAS_AVAILABLE:
+            self.logger.warning("Geopandas is not available. Cannot display map visualization.")
+            self.metadata_text.config(state=tk.NORMAL)
+            self.metadata_text.delete(1.0, tk.END)
+            self.metadata_text.insert(
+                tk.END,
+                "Geopandas library not found. Map visualization is disabled.\n"
+                "Please install it (e.g., pip install geopandas matplotlib).",
+            )
+            self.metadata_text.config(state=tk.DISABLED)
+            return
+
+        if not file_path or not file_path.exists():
+            self.logger.warning(f"File does not exist or is not specified: {file_path}")
+            self._clear_metadata_and_plot()
+            return
+
+        if self._last_selected_file_path == file_path:
+            self.logger.debug(f"File {file_path.name} is already displayed.")
+            return
+
+        self.logger.info(f"Parsing and displaying file: {file_path.name}")
+        self._last_selected_file_path = file_path
+
+        # Clear previous data
+        self._clear_metadata_and_plot()
+
+        # Use BaseGPXProcessor to load the file
+        try:
+            temp_processor = BaseGPXProcessor(
+                input_=str(file_path),
+                logger=self.logger,
+                output=None,
+                min_dist=0,
+                date_format="%Y-%m-%d",
+                elevation=True,  # Set elevation to True to get stats
+            )
+            gpx_data = None
+            if file_path.suffix.lower() == ".gpx":
+                gpx_data = temp_processor._load_gpx_file(file_path)
+            elif file_path.suffix.lower() == ".kml":
+                gpx_data = temp_processor._load_kml_file(file_path)
+            else:
+                self.logger.warning(f"Unsupported file type for visualization: {file_path.suffix}")
+                self.metadata_text.config(state=tk.NORMAL)
+                self.metadata_text.insert(
+                    tk.END, f"Unsupported file type for visualization: {file_path.suffix}"
+                )
+                self.metadata_text.config(state=tk.DISABLED)
+                return
+
+            if gpx_data:
+                self._update_metadata_display(gpx_data, file_path.name)
+                self._plot_gpx_data(gpx_data)
+            else:
+                self.logger.error(f"Failed to load GPX/KML data from {file_path.name}")
+                self.metadata_text.config(state=tk.NORMAL)
+                self.metadata_text.insert(
+                    tk.END,
+                    f"Failed to load GPX/KML data from {file_path.name}.\nCheck log for details.",
+                )
+                self.metadata_text.config(state=tk.DISABLED)
+
+        except Exception as e:
+            self.logger.error(f"Error parsing file {file_path.name}: {e}", exc_info=True)
+            self._clear_metadata_and_plot()
+            self.metadata_text.config(state=tk.NORMAL)
+            self.metadata_text.insert(
+                tk.END,
+                f"Error processing file {file_path.name}:\n{e}\nCheck log for full traceback.",
+            )
+            self.metadata_text.config(state=tk.DISABLED)
+
+    def _update_metadata_display(self, gpx_data: gpxpy.gpx.GPX, file_name: str):
+        """Updates the metadata text widget with information from the GPX data."""
+        self.metadata_text.config(state=tk.NORMAL)  # Enable editing
+        self.metadata_text.delete(1.0, tk.END)
+
+        self.metadata_text.insert(tk.END, f"File: {file_name}\n")
+        self.metadata_text.insert(tk.END, "-------------------------------------\n")
+
+        num_tracks = len(gpx_data.tracks)
+        num_routes = len(gpx_data.routes)
+        num_waypoints = len(gpx_data.waypoints)
+
+        self.metadata_text.insert(tk.END, f"Tracks: {num_tracks}\n")
+        self.metadata_text.insert(tk.END, f"Routes: {num_routes}\n")
+        self.metadata_text.insert(tk.END, f"Waypoints: {num_waypoints}\n")
+        self.metadata_text.insert(tk.END, "\n")
+
+        # Display Tracks
+        if num_tracks > 0:
+            self.metadata_text.insert(tk.END, "Tracks:\n")
+            for i, track in enumerate(gpx_data.tracks):
+                track_name = track.name if track.name else f"Unnamed Track {i + 1}"
+                distance_2d = track.length_2d() if track.length_2d() is not None else 0
+
+                # Calculate uphill/downhill if elevation data is present
+                uphill, downhill = 0, 0
+                if track.segments:
+                    # gpxpy has built-in functions for this if elevation is present
+                    try:
+                        up_down = track.get_uphill_downhill()
+                        uphill = up_down.uphill
+                        downhill = up_down.downhill
+                    except Exception as e:
+                        self.logger.debug(
+                            f"Could not calculate uphill/downhill for track {track_name}: {e}"
+                        )
+
+                self.metadata_text.insert(tk.END, f"  - {track_name}: {distance_2d / 1000:.2f} km")
+                if uphill is not None and downhill is not None:
+                    self.metadata_text.insert(tk.END, f" (↑{uphill:.1f}m ↓{downhill:.1f}m)\n")
+                else:
+                    self.metadata_text.insert(tk.END, "\n")
+            self.metadata_text.insert(tk.END, "\n")
+
+        # Display Routes
+        if num_routes > 0:
+            self.metadata_text.insert(tk.END, "Routes:\n")
+            for i, route in enumerate(gpx_data.routes):
+                route_name = route.name if route.name else f"Unnamed Route {i + 1}"
+                distance_2d = route.length_2d() if route.length_2d() is not None else 0
+
+                # Calculate uphill/downhill for routes
+                uphill, downhill = 0, 0
+                # gpxpy does not directly provide get_uphill_downhill for routes,
+                # so we can manually iterate or if it's treated like a track internally
+                # For now, let's keep it simple or implement manual calculation if needed.
+                # Assuming BaseGPXProcessor would handle elevation adjustments on points.
+                if route.points:
+                    try:
+                        # Temporary track for elevation calculation
+                        temp_track = gpxpy.gpx.GPXTrack()
+                        temp_segment = gpxpy.gpx.GPXTrackSegment()
+                        temp_segment.points.extend(route.points)
+                        temp_track.segments.append(temp_segment)
+                        up_down = temp_track.get_uphill_downhill()
+                        uphill = up_down.uphill
+                        downhill = up_down.downhill
+                    except Exception as e:
+                        self.logger.debug(
+                            f"Could not calculate uphill/downhill for route {route_name}: {e}"
+                        )
+
+                self.metadata_text.insert(tk.END, f"  - {route_name}: {distance_2d / 1000:.2f} km")
+                if uphill is not None and downhill is not None:
+                    self.metadata_text.insert(tk.END, f" (↑{uphill:.1f}m ↓{downhill:.1f}m)\n")
+                else:
+                    self.metadata_text.insert(tk.END, "\n")
+            self.metadata_text.insert(tk.END, "\n")
+
+        self.metadata_text.config(state=tk.DISABLED)  # Disable editing
+
+    def _plot_gpx_data(self, gpx_data: gpxpy.gpx.GPX):
+        """Plots GPX data (tracks, routes, waypoints) on the Matplotlib canvas."""
+        self.ax.clear()  # Clear existing plot
+        self.ax.set_facecolor("#EEEEEE")  # Light grey background for the axes
+
+        # Plot country borders if loaded
+        if self.country_borders_gdf is not None:
+            self.country_borders_gdf.plot(
+                ax=self.ax, color="lightgray", edgecolor="darkgray", linewidth=0.5
+            )
+
+        all_points_coords = []  # Store (lon, lat) for setting limits
+
+        # Plot Tracks
+        for track in gpx_data.tracks:
+            for segment in track.segments:
+                if segment.points:
+                    lats = [p.latitude for p in segment.points if p.latitude is not None]
+                    lons = [p.longitude for p in segment.points if p.longitude is not None]
+                    if lats and lons:
+                        self.ax.plot(
+                            lons, lats, color="darkblue", linewidth=1.5, zorder=2
+                        )  # Dark blue for tracks
+                        all_points_coords.extend(zip(lons, lats))
+
+        # Plot Routes
+        for route in gpx_data.routes:
+            if route.points:
+                lats = [p.latitude for p in route.points if p.latitude is not None]
+                lons = [p.longitude for p in route.points if p.longitude is not None]
+                if lats and lons:
+                    self.ax.plot(
+                        lons, lats, color="darkblue", linewidth=1.5, linestyle="--", zorder=2
+                    )  # Dark blue, dashed for routes
+                    all_points_coords.extend(zip(lons, lats))
+
+        # Plot Waypoints
+        waypoint_lons = [p.longitude for p in gpx_data.waypoints if p.longitude is not None]
+        waypoint_lats = [p.latitude for p in gpx_data.waypoints if p.latitude is not None]
+        if waypoint_lons and waypoint_lats:
+            self.ax.scatter(
+                waypoint_lons, waypoint_lats, color="red", s=10, zorder=3
+            )  # Red small dots for waypoints
+            all_points_coords.extend(zip(waypoint_lons, waypoint_lats))
+
+        # Auto-adjust limits based on plotted data, or set default if no data
+        if all_points_coords:
+            all_lons = [coord[0] for coord in all_points_coords]
+            all_lats = [coord[1] for coord in all_points_coords]
+
+            min_lat = min(all_lats)
+            max_lat = max(all_lats)
+            min_lon = min(all_lons)
+            max_lon = max(all_lons)
+
+            # Add a small buffer around the points for better visualization
+            lat_buffer = (max_lat - min_lat) * 0.1 if (max_lat - min_lat) > 0 else 0.1
+            lon_buffer = (max_lon - min_lon) * 0.1 if (max_lon - min_lon) > 0 else 0.1
+
+            self.ax.set_xlim(min_lon - lon_buffer, max_lon + lon_buffer)
+            self.ax.set_ylim(min_lat - lat_buffer, max_lat + lat_buffer)
+        else:
+            # Default view if no data is plotted (e.g., world map or Europe)
+            self.ax.set_xlim(-10, 30)  # Default to a Europe-ish view
+            self.ax.set_ylim(35, 65)
+
+        self.ax.set_aspect("equal", adjustable="box")  # Maintain aspect ratio
+        self.ax.tick_params(
+            left=False, right=False, labelleft=False, labelbottom=False, bottom=False
+        )  # Hide axis labels and ticks
+        self.canvas.draw()  # Redraw the canvas
 
 
 def main():
