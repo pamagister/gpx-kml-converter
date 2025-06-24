@@ -194,7 +194,7 @@ class MainGui:
         """Build the main GUI widgets."""
         # Main container frame
         main_frame = ttk.Frame(self.root)
-        main_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
+        main_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=0)
 
         # Create main PanedWindow for horizontal resizing
         main_paned = ttk.PanedWindow(main_frame, orient=tk.HORIZONTAL)
@@ -234,7 +234,7 @@ class MainGui:
 
         # Frame für Listbox mit beiden Scrollbars
         input_listbox_frame = ttk.Frame(input_file_frame)
-        input_listbox_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        input_listbox_frame.pack(fill=tk.BOTH, expand=True, padx=0, pady=0)
 
         self.input_file_listbox = tk.Listbox(input_listbox_frame, selectmode=tk.EXTENDED)
 
@@ -271,7 +271,7 @@ class MainGui:
 
         # Frame für Listbox mit beiden Scrollbars
         output_listbox_frame = ttk.Frame(output_file_frame)
-        output_listbox_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        output_listbox_frame.pack(fill=tk.BOTH, expand=True, padx=0, pady=0)
 
         self.output_file_listbox = tk.Listbox(output_listbox_frame)
 
@@ -338,7 +338,7 @@ class MainGui:
         self.clear_output_button.pack(pady=1, fill=tk.X)
 
         self.progress = ttk.Progressbar(button_frame, mode="indeterminate")
-        self.progress.pack(pady=5, fill=tk.X)
+        self.progress.pack(pady=0, fill=tk.X)
 
         # Metadata Display Frame (expandierbar)
         metadata_frame = ttk.LabelFrame(middle_top_paned, text="File Metadata")
@@ -346,7 +346,7 @@ class MainGui:
 
         # Frame für Text widget mit beiden Scrollbars
         metadata_text_frame = ttk.Frame(metadata_frame)
-        metadata_text_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        metadata_text_frame.pack(fill=tk.BOTH, expand=True, padx=0, pady=0)
 
         self.metadata_text = tk.Text(metadata_text_frame, state=tk.DISABLED)
 
@@ -400,7 +400,7 @@ class MainGui:
 
         # Frame für Log Text widget mit beiden Scrollbars
         log_text_frame = ttk.Frame(log_frame)
-        log_text_frame.grid(row=0, column=0, sticky="nsew", padx=5, pady=5)
+        log_text_frame.grid(row=0, column=0, sticky="nsew", padx=0, pady=0)
 
         self.log_text = tk.Text(log_text_frame, height=15)  # Höher, kein Wrap
 
@@ -426,11 +426,11 @@ class MainGui:
 
         # Log controls
         log_controls = ttk.Frame(log_frame)
-        log_controls.grid(row=1, column=0, sticky="ew", padx=5, pady=(0, 5))
+        log_controls.grid(row=1, column=0, sticky="ew", padx=0, pady=(0, 0))
 
         ttk.Button(log_controls, text="Clear Log", command=self._clear_log).pack(side=tk.LEFT)
 
-        ttk.Label(log_controls, text="Log Level:").pack(side=tk.LEFT, padx=(10, 5))
+        ttk.Label(log_controls, text="Log Level:").pack(side=tk.LEFT, padx=(0, 0))
         self.log_level_var = tk.StringVar(
             value=self.config_manager.get_category("app").log_level.default
         )
