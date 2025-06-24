@@ -196,25 +196,68 @@ class MainGui:
         main_frame = ttk.Frame(self.root)
         main_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
 
-        # Use a grid layout for the main content area
-        main_frame.grid_columnconfigure(0, weight=1)  # Input files (1/3)
-        main_frame.grid_columnconfigure(1, weight=1)  # Middle section (2/3)
-        main_frame.grid_columnconfigure(2, weight=1)  # Output files (1/3)
-        main_frame.grid_rowconfigure(0, weight=3)  # Top section (buttons, metadata, lists)
-        main_frame.grid_rowconfigure(1, weight=5)  # Plot section (larger)
-        main_frame.grid_rowconfigure(2, weight=2)  # Log output (smaller)
+        # Create main PanedWindow for horizontal resizing
+        main_paned = ttk.PanedWindow(main_frame, orient=tk.HORIZONTAL)
+        main_paned.pack(fill=tk.BOTH, expand=True)
 
-        # Input File list (Left Column - Spans two rows for better height)
-        input_file_frame = ttk.LabelFrame(main_frame, text="Input Files")
-        input_file_frame.grid(row=0, column=0, rowspan=2, sticky="nsew", padx=(0, 5), pady=0)
+        # Left pane: Input files
+        left_pane = ttk.Frame(main_paned)
+        main_paned.add(left_pane, weight=1)
 
-        self.input_file_listbox = tk.Listbox(input_file_frame, selectmode=tk.EXTENDED)
-        input_file_scrollbar = ttk.Scrollbar(
-            input_file_frame, orient="vertical", command=self.input_file_listbox.yview
+        # Middle pane: Contains buttons, metadata, and plot
+        middle_pane = ttk.Frame(main_paned)
+        main_paned.add(middle_pane, weight=2)
+
+        # Right pane: Output files
+        right_pane = ttk.Frame(main_paned)
+        main_paned.add(right_pane, weight=1)
+
+        # Vertical PanedWindow for middle section (buttons/metadata vs plot vs log)
+        middle_vertical_paned = ttk.PanedWindow(middle_pane, orient=tk.VERTICAL)
+        middle_vertical_paned.pack(fill=tk.BOTH, expand=True)
+
+        # Top section of middle pane (buttons and metadata)
+        middle_top_frame = ttk.Frame(middle_vertical_paned)
+        middle_vertical_paned.add(middle_top_frame, weight=2)
+
+        # Plot section
+        plot_frame = ttk.LabelFrame(middle_vertical_paned, text="Map Visualization")
+        middle_vertical_paned.add(plot_frame, weight=2)
+
+        # Log section (höher als Plot)
+        log_frame = ttk.LabelFrame(middle_vertical_paned, text="Log Output")
+        middle_vertical_paned.add(log_frame, weight=3)
+
+        # Input File list (Left Pane)
+        input_file_frame = ttk.LabelFrame(left_pane, text="Input Files")
+        input_file_frame.pack(fill=tk.BOTH, expand=True)
+
+        # Frame für Listbox mit beiden Scrollbars
+        input_listbox_frame = ttk.Frame(input_file_frame)
+        input_listbox_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+
+        self.input_file_listbox = tk.Listbox(input_listbox_frame, selectmode=tk.EXTENDED)
+
+        # Vertikale Scrollbar
+        input_file_v_scrollbar = ttk.Scrollbar(
+            input_listbox_frame, orient="vertical", command=self.input_file_listbox.yview
         )
-        self.input_file_listbox.configure(yscrollcommand=input_file_scrollbar.set)
-        self.input_file_listbox.pack(side="left", fill="both", expand=True, padx=5, pady=5)
-        input_file_scrollbar.pack(side="right", fill="y", pady=5)
+        self.input_file_listbox.configure(yscrollcommand=input_file_v_scrollbar.set)
+
+        # Horizontale Scrollbar
+        input_file_h_scrollbar = ttk.Scrollbar(
+            input_listbox_frame, orient="horizontal", command=self.input_file_listbox.xview
+        )
+        self.input_file_listbox.configure(xscrollcommand=input_file_h_scrollbar.set)
+
+        # Grid layout für Listbox und Scrollbars
+        self.input_file_listbox.grid(row=0, column=0, sticky="nsew")
+        input_file_v_scrollbar.grid(row=0, column=1, sticky="ns")
+        input_file_h_scrollbar.grid(row=1, column=0, sticky="ew")
+
+        input_listbox_frame.grid_rowconfigure(0, weight=1)
+        input_listbox_frame.grid_columnconfigure(0, weight=1)
+
         self.input_file_listbox.bind(
             "<Double-Button-1>", lambda event: self._open_selected_file(event, self.input_files)
         )
@@ -222,17 +265,36 @@ class MainGui:
             "<<ListboxSelect>>", lambda event: self._on_file_selection(event, self.input_files)
         )
 
-        # Output File list (Right Column - Spans two rows for better height)
-        output_file_frame = ttk.LabelFrame(main_frame, text="Generated Files")
-        output_file_frame.grid(row=0, column=2, rowspan=2, sticky="nsew", padx=(5, 0), pady=0)
+        # Output File list (Right Pane)
+        output_file_frame = ttk.LabelFrame(right_pane, text="Generated Files")
+        output_file_frame.pack(fill=tk.BOTH, expand=True)
 
-        self.output_file_listbox = tk.Listbox(output_file_frame)
-        output_file_scrollbar = ttk.Scrollbar(
-            output_file_frame, orient="vertical", command=self.output_file_listbox.yview
+        # Frame für Listbox mit beiden Scrollbars
+        output_listbox_frame = ttk.Frame(output_file_frame)
+        output_listbox_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+
+        self.output_file_listbox = tk.Listbox(output_listbox_frame)
+
+        # Vertikale Scrollbar
+        output_file_v_scrollbar = ttk.Scrollbar(
+            output_listbox_frame, orient="vertical", command=self.output_file_listbox.yview
         )
-        self.output_file_listbox.configure(yscrollcommand=output_file_scrollbar.set)
-        self.output_file_listbox.pack(side="left", fill="both", expand=True, padx=5, pady=5)
-        output_file_scrollbar.pack(side="right", fill="y", pady=5)
+        self.output_file_listbox.configure(yscrollcommand=output_file_v_scrollbar.set)
+
+        # Horizontale Scrollbar
+        output_file_h_scrollbar = ttk.Scrollbar(
+            output_listbox_frame, orient="horizontal", command=self.output_file_listbox.xview
+        )
+        self.output_file_listbox.configure(xscrollcommand=output_file_h_scrollbar.set)
+
+        # Grid layout für Listbox und Scrollbars
+        self.output_file_listbox.grid(row=0, column=0, sticky="nsew")
+        output_file_v_scrollbar.grid(row=0, column=1, sticky="ns")
+        output_file_h_scrollbar.grid(row=1, column=0, sticky="ew")
+
+        output_listbox_frame.grid_rowconfigure(0, weight=1)
+        output_listbox_frame.grid_columnconfigure(0, weight=1)
+
         self.output_file_listbox.bind(
             "<Double-Button-1>", lambda event: self._open_selected_file(event, self.output_files)
         )
@@ -240,17 +302,14 @@ class MainGui:
             "<<ListboxSelect>>", lambda event: self._on_file_selection(event, self.output_files)
         )
 
-        # Middle section: Buttons and Metadata (Top-Middle)
-        middle_top_frame = ttk.Frame(main_frame)
-        middle_top_frame.grid(row=0, column=1, sticky="nsew", padx=5, pady=0)
-        middle_top_frame.grid_columnconfigure(0, weight=1)  # Buttons column
-        middle_top_frame.grid_columnconfigure(1, weight=2)  # Metadata column (wider)
-        middle_top_frame.grid_rowconfigure(0, weight=1)  # Single row for this section
+        # Middle top section: Buttons and Metadata mit horizontalem PanedWindow
+        middle_top_paned = ttk.PanedWindow(middle_top_frame, orient=tk.HORIZONTAL)
+        middle_top_paned.pack(fill=tk.BOTH, expand=True)
 
-        # Buttons Frame (Left of middle_top_frame)
-        button_frame = ttk.Frame(middle_top_frame)
-        button_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 5), pady=0)  # Aligned left
-        button_frame.grid_rowconfigure(8, weight=1)  # Allow progress bar to take space
+        # Buttons Frame (feste Breite)
+        button_frame = ttk.Frame(middle_top_paned)
+        button_frame.configure(width=200)  # Feste Breite für Buttons
+        middle_top_paned.add(button_frame, weight=0)
 
         open_button = ttk.Button(button_frame, text="Open Files", command=self._open_files)
         open_button.pack(pady=8, fill=tk.X)
@@ -281,29 +340,43 @@ class MainGui:
         self.progress = ttk.Progressbar(button_frame, mode="indeterminate")
         self.progress.pack(pady=5, fill=tk.X)
 
-        # Metadata Display Sub-frame (Right of middle_top_frame)
-        metadata_frame = ttk.LabelFrame(middle_top_frame, text="File Metadata")
-        metadata_frame.grid(row=0, column=1, sticky="nsew", padx=(5, 0), pady=0)
-        metadata_frame.grid_rowconfigure(0, weight=1)  # Make text widget expand
-        metadata_frame.grid_columnconfigure(0, weight=1)
+        # Metadata Display Frame (expandierbar)
+        metadata_frame = ttk.LabelFrame(middle_top_paned, text="File Metadata")
+        middle_top_paned.add(metadata_frame, weight=1)
 
-        self.metadata_text = tk.Text(metadata_frame, wrap=tk.WORD, state=tk.DISABLED)
-        metadata_scrollbar = ttk.Scrollbar(
-            metadata_frame, orient="vertical", command=self.metadata_text.yview
+        # Frame für Text widget mit beiden Scrollbars
+        metadata_text_frame = ttk.Frame(metadata_frame)
+        metadata_text_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+
+        self.metadata_text = tk.Text(metadata_text_frame, state=tk.DISABLED)
+
+        # Vertikale Scrollbar
+        metadata_v_scrollbar = ttk.Scrollbar(
+            metadata_text_frame, orient="vertical", command=self.metadata_text.yview
         )
-        self.metadata_text.configure(yscrollcommand=metadata_scrollbar.set)
-        self.metadata_text.grid(row=0, column=0, sticky="nsew", padx=5, pady=5)
-        metadata_scrollbar.grid(row=0, column=1, sticky="ns", pady=5)
+        self.metadata_text.configure(yscrollcommand=metadata_v_scrollbar.set)
 
-        # Matplotlib Plot Sub-frame (Middle-Bottom)
-        plot_frame = ttk.LabelFrame(main_frame, text="Map Visualization")
-        plot_frame.grid(row=1, column=1, sticky="nsew", padx=5, pady=(5, 0))
+        # Horizontale Scrollbar
+        metadata_h_scrollbar = ttk.Scrollbar(
+            metadata_text_frame, orient="horizontal", command=self.metadata_text.xview
+        )
+        self.metadata_text.configure(xscrollcommand=metadata_h_scrollbar.set)
+
+        # Grid layout für Text widget und Scrollbars
+        self.metadata_text.grid(row=0, column=0, sticky="nsew")
+        metadata_v_scrollbar.grid(row=0, column=1, sticky="ns")
+        metadata_h_scrollbar.grid(row=1, column=0, sticky="ew")
+
+        metadata_text_frame.grid_rowconfigure(0, weight=1)
+        metadata_text_frame.grid_columnconfigure(0, weight=1)
+
+        # Matplotlib Plot Frame
         plot_frame.grid_rowconfigure(0, weight=1)  # Canvas
         plot_frame.grid_rowconfigure(1, weight=0)  # Toolbar
         plot_frame.grid_columnconfigure(0, weight=1)
 
         # Setup Matplotlib figure and canvas
-        self.fig, self.ax = plt.subplots(figsize=(8, 6))  # Initial size, will expand
+        self.fig, self.ax = plt.subplots(figsize=(8, 4))  # Kleinere initiale Höhe
         self.fig.set_facecolor("#EEEEEE")  # Light grey background for the figure
         self.canvas = FigureCanvasTkAgg(self.fig, master=plot_frame)
         self.canvas_widget = self.canvas.get_tk_widget()
@@ -320,25 +393,40 @@ class MainGui:
             left=False, right=False, labelleft=False, labelbottom=False, bottom=False
         )  # Hide axis labels and ticks
 
-        # Log output (Bottom section, spanning all columns)
-        log_frame = ttk.LabelFrame(main_frame, text="Log Output")
-        log_frame.grid(row=2, column=0, columnspan=3, rowspan=2, sticky="nsew", padx=0, pady=(5, 0))
-        log_frame.grid_rowconfigure(0, weight=3)  # Text widget
-        log_frame.grid_columnconfigure(0, weight=3)  # Text widget
+        # Log output Frame
+        log_frame.grid_rowconfigure(0, weight=1)  # Text widget
+        log_frame.grid_columnconfigure(0, weight=1)  # Text widget
         log_frame.grid_rowconfigure(1, weight=0)  # Controls
 
-        self.log_text = tk.Text(log_frame, height=10, wrap=tk.WORD)
-        log_text_scrollbar = ttk.Scrollbar(
-            log_frame, orient="vertical", command=self.log_text.yview
-        )
-        self.log_text.configure(yscrollcommand=log_text_scrollbar.set)
+        # Frame für Log Text widget mit beiden Scrollbars
+        log_text_frame = ttk.Frame(log_frame)
+        log_text_frame.grid(row=0, column=0, sticky="nsew", padx=5, pady=5)
 
-        self.log_text.grid(row=0, column=0, sticky="nsew", padx=5, pady=5)
-        log_text_scrollbar.grid(row=0, column=1, sticky="ns", pady=5)
+        self.log_text = tk.Text(log_text_frame, height=15)  # Höher, kein Wrap
+
+        # Vertikale Scrollbar
+        log_v_scrollbar = ttk.Scrollbar(
+            log_text_frame, orient="vertical", command=self.log_text.yview
+        )
+        self.log_text.configure(yscrollcommand=log_v_scrollbar.set)
+
+        # Horizontale Scrollbar
+        log_h_scrollbar = ttk.Scrollbar(
+            log_text_frame, orient="horizontal", command=self.log_text.xview
+        )
+        self.log_text.configure(xscrollcommand=log_h_scrollbar.set)
+
+        # Grid layout für Log Text widget und Scrollbars
+        self.log_text.grid(row=0, column=0, sticky="nsew")
+        log_v_scrollbar.grid(row=0, column=1, sticky="ns")
+        log_h_scrollbar.grid(row=1, column=0, sticky="ew")
+
+        log_text_frame.grid_rowconfigure(0, weight=1)
+        log_text_frame.grid_columnconfigure(0, weight=1)
 
         # Log controls
         log_controls = ttk.Frame(log_frame)
-        log_controls.grid(row=1, column=0, columnspan=2, sticky="ew", padx=5, pady=(0, 5))
+        log_controls.grid(row=1, column=0, sticky="ew", padx=5, pady=(0, 5))
 
         ttk.Button(log_controls, text="Clear Log", command=self._clear_log).pack(side=tk.LEFT)
 
