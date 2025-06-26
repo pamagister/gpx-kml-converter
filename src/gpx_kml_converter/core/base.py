@@ -1,4 +1,5 @@
 import math
+import shutil
 import traceback
 import zipfile
 from datetime import datetime
@@ -6,6 +7,7 @@ from pathlib import Path
 
 import gpxpy
 from gpxpy.gpx import GPX, GPXTrackPoint, GPXWaypoint, GPXXMLSyntaxException
+from shapely.geometry import LineString, Point
 
 # Optional SRTM import with fallback
 try:
@@ -20,7 +22,6 @@ except ImportError:
 try:
     from fastkml import kml, styles
     from fastkml.features import Document, Folder, Placemark
-    from shapely.geometry import LineString, Point
 
     KML_AVAILABLE = True
 except ImportError:
@@ -649,8 +650,6 @@ class BaseGPXProcessor:
             # Clean up temporary files
             temp_dir = Path.cwd() / "temp_extracted_files"  # Changed folder name
             if temp_dir.exists():
-                import shutil
-
                 shutil.rmtree(temp_dir)
             return generated_files
 
