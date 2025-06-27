@@ -146,11 +146,13 @@ class MainGui:
         self.toolbar = None
         self.country_borders_gdf = None  # GeoDataFrame for country borders
         self.gpx_plotter = None  # New GPXPlotter instance
+        self.log_window = None
 
         self._build_widgets()
         self._create_menu()
 
         # Setup GUI logging after widgets are created
+        self._build_log_window()
         self._setup_gui_logging()
 
         # Handle window closing
@@ -173,44 +175,88 @@ class MainGui:
         main_frame = ttk.Frame(self.root)
         main_frame.pack(fill=tk.BOTH, expand=True, padx=0, pady=0)
 
-        # Create main PanedWindow for horizontal resizing
-        main_paned = ttk.PanedWindow(main_frame, orient=tk.HORIZONTAL)
-        main_paned.pack(fill=tk.BOTH, expand=True)
+        # Create main vertical PanedWindow for upper/lower sections
+        main_vertical_paned = ttk.PanedWindow(main_frame, orient=tk.VERTICAL)
+        main_vertical_paned.pack(fill=tk.BOTH, expand=True)
 
-        # Left pane: Input files
-        left_pane = ttk.Frame(main_paned)
-        main_paned.add(left_pane, weight=1)
+        # Upper section
+        main_upper = ttk.Frame(main_vertical_paned)
+        main_vertical_paned.add(main_upper, weight=7)
 
-        # Middle pane: Contains buttons, metadata, and plot
-        middle_pane = ttk.Frame(main_paned)
-        main_paned.add(middle_pane, weight=2)
+        # Lower section
+        main_lower = ttk.Frame(main_vertical_paned)
+        main_vertical_paned.add(main_lower, weight=1)
 
-        # Right pane: Output files
-        right_pane = ttk.Frame(main_paned)
-        main_paned.add(right_pane, weight=1)
+        # Upper section horizontal layout
+        upper_horizontal_paned = ttk.PanedWindow(main_upper, orient=tk.HORIZONTAL)
+        upper_horizontal_paned.pack(fill=tk.BOTH, expand=True)
 
-        # Vertical PanedWindow for middle section (buttons/metadata vs plot vs log)
-        middle_vertical_paned = ttk.PanedWindow(middle_pane, orient=tk.VERTICAL)
-        middle_vertical_paned.pack(fill=tk.BOTH, expand=True)
+        # Files panel (left side of upper section)
+        files_panel = ttk.Frame(upper_horizontal_paned)
+        upper_horizontal_paned.add(files_panel, weight=4)
 
-        # Top section of middle pane (buttons and metadata)
-        middle_top_frame = ttk.Frame(middle_vertical_paned)
-        middle_vertical_paned.add(middle_top_frame, weight=2)
+        # Plot frame (right side of upper section)
+        plot_frame = ttk.LabelFrame(upper_horizontal_paned, text="Map Visualization")
+        upper_horizontal_paned.add(plot_frame, weight=1)
 
-        # Plot section
-        plot_frame = ttk.LabelFrame(middle_vertical_paned, text="Map Visualization")
-        middle_vertical_paned.add(plot_frame, weight=2)
+        # Files panel horizontal layout
+        files_horizontal_paned = ttk.PanedWindow(files_panel, orient=tk.HORIZONTAL)
+        files_horizontal_paned.pack(fill=tk.BOTH, expand=True)
 
-        # Log section (höher als Plot)
-        log_frame = ttk.LabelFrame(middle_vertical_paned, text="Log Output")
-        middle_vertical_paned.add(log_frame, weight=3)
+        # Input files frame (left in files panel)
+        input_file_frame = ttk.LabelFrame(files_horizontal_paned, text="Input Files")
+        files_horizontal_paned.add(input_file_frame, weight=1)
 
-        # Input File list (Left Pane)
-        input_file_frame = ttk.LabelFrame(left_pane, text="Input Files")
-        input_file_frame.pack(fill=tk.BOTH, expand=True)
+        # Button frame (middle in files panel) - fixed width 20 pixels
+        button_frame = ttk.Frame(files_horizontal_paned)
+        button_frame.configure(width=20)
+        files_horizontal_paned.add(button_frame, weight=0)
 
+        # Output files frame (right in files panel)
+        output_file_frame = ttk.LabelFrame(files_horizontal_paned, text="Generated Files")
+        files_horizontal_paned.add(output_file_frame, weight=1)
+
+        # Lower section horizontal layout
+        lower_horizontal_paned = ttk.PanedWindow(main_lower, orient=tk.HORIZONTAL)
+        lower_horizontal_paned.pack(fill=tk.BOTH, expand=True)
+
+        # Metadata frame (left in lower section)
+        metadata_frame = ttk.LabelFrame(lower_horizontal_paned, text="File Metadata")
+        lower_horizontal_paned.add(metadata_frame, weight=1)
+
+        # Tracks listbox frame (middle in lower section)
+        tracks_listbox_frame = ttk.LabelFrame(lower_horizontal_paned, text="Tracks")
+        lower_horizontal_paned.add(tracks_listbox_frame, weight=1)
+
+        # Profile plot frame (right in lower section)
+        profile_plot_frame = ttk.LabelFrame(lower_horizontal_paned, text="Profile Plot")
+        lower_horizontal_paned.add(profile_plot_frame, weight=1)
+
+        # Build Input File list
+        self._build_input_file_list(input_file_frame)
+
+        # Build Output File list
+        self._build_output_file_list(output_file_frame)
+
+        # Build Button panel
+        self._build_button_panel(button_frame)
+
+        # Build Metadata display
+        self._build_metadata_display(metadata_frame)
+
+        # Build Matplotlib Plot
+        self._build_plot_display(plot_frame)
+
+        # Build Tracks listbox (placeholder for now)
+        self._build_tracks_listbox(tracks_listbox_frame)
+
+        # Build Profile plot (placeholder for now)
+        self._build_profile_plot(profile_plot_frame)
+
+    def _build_input_file_list(self, parent_frame):
+        """Build the input file listbox with scrollbars."""
         # Frame für Listbox mit beiden Scrollbars
-        input_listbox_frame = ttk.Frame(input_file_frame)
+        input_listbox_frame = ttk.Frame(parent_frame)
         input_listbox_frame.pack(fill=tk.BOTH, expand=True, padx=0, pady=0)
 
         self.input_file_listbox = tk.Listbox(input_listbox_frame, selectmode=tk.EXTENDED)
@@ -242,12 +288,10 @@ class MainGui:
             "<<ListboxSelect>>", lambda event: self._on_file_selection(event, self.gpx_input)
         )
 
-        # Output File list (Right Pane)
-        output_file_frame = ttk.LabelFrame(right_pane, text="Generated Files")
-        output_file_frame.pack(fill=tk.BOTH, expand=True)
-
+    def _build_output_file_list(self, parent_frame):
+        """Build the output file listbox with scrollbars."""
         # Frame für Listbox mit beiden Scrollbars
-        output_listbox_frame = ttk.Frame(output_file_frame)
+        output_listbox_frame = ttk.Frame(parent_frame)
         output_listbox_frame.pack(fill=tk.BOTH, expand=True, padx=0, pady=0)
 
         self.output_file_listbox = tk.Listbox(output_listbox_frame)
@@ -279,45 +323,40 @@ class MainGui:
             "<<ListboxSelect>>", lambda event: self._on_file_selection(event, self.gpx_output)
         )
 
-        # Middle top section: Buttons and Metadata mit horizontalem PanedWindow
-        middle_top_paned = ttk.PanedWindow(middle_top_frame, orient=tk.HORIZONTAL)
-        middle_top_paned.pack(fill=tk.BOTH, expand=True)
+    def _build_button_panel(self, parent_frame):
+        """Build the button panel with fixed width."""
+        # Configure fixed width
+        parent_frame.pack_propagate(False)
+        parent_frame.configure(width=30)
 
-        # Buttons Frame (feste Breite)
-        button_frame = ttk.Frame(middle_top_paned)
-        button_frame.configure(width=5)  # Feste Breite für Buttons
-        middle_top_paned.add(button_frame, weight=1)
-
-        open_button = ttk.Button(button_frame, text="📂", command=self._open_files)
+        open_button = ttk.Button(parent_frame, text="📂", command=self._open_files)
         ToolTip(open_button, "Open Files")
         open_button.pack(pady=8, fill=tk.X)
 
         self.run_buttons = {}
         for mode, label, tooltip in self.processing_modes:
             button = ttk.Button(
-                button_frame, text=label, command=partial(self._run_processing, mode=mode)
+                parent_frame, text=label, command=partial(self._run_processing, mode=mode)
             )
             button.pack(pady=1, fill=tk.X)
             ToolTip(button, tooltip)
             self.run_buttons[mode] = button
 
         self.clear_files_button = ttk.Button(
-            button_frame,
+            parent_frame,
             text="🗑️",
             command=self._clear_files,
         )
         ToolTip(self.clear_files_button, "Clear Files")
         self.clear_files_button.pack(pady=8, fill=tk.X)
 
-        self.progress = ttk.Progressbar(button_frame, mode="indeterminate")
+        self.progress = ttk.Progressbar(parent_frame, mode="indeterminate")
         self.progress.pack(pady=0, fill=tk.X)
 
-        # Metadata Display Frame (expandierbar)
-        metadata_frame = ttk.LabelFrame(middle_top_paned, text="File Metadata")
-        middle_top_paned.add(metadata_frame, weight=10)
-
+    def _build_metadata_display(self, parent_frame):
+        """Build the metadata display with scrollbars."""
         # Frame für Text widget mit beiden Scrollbars
-        metadata_text_frame = ttk.Frame(metadata_frame)
+        metadata_text_frame = ttk.Frame(parent_frame)
         metadata_text_frame.pack(fill=tk.BOTH, expand=True, padx=0, pady=0)
 
         self.metadata_text = tk.Text(metadata_text_frame, state=tk.DISABLED)
@@ -342,25 +381,59 @@ class MainGui:
         metadata_text_frame.grid_rowconfigure(0, weight=1)
         metadata_text_frame.grid_columnconfigure(0, weight=1)
 
-        # Matplotlib Plot Frame
-        plot_frame.grid_rowconfigure(0, weight=1)  # Canvas
-        plot_frame.grid_rowconfigure(1, weight=0)  # Toolbar
-        plot_frame.grid_columnconfigure(0, weight=1)
+    def _build_plot_display(self, parent_frame):
+        """Build the matplotlib plot display."""
+        parent_frame.grid_rowconfigure(0, weight=1)  # Canvas
+        parent_frame.grid_rowconfigure(1, weight=0)  # Toolbar
+        parent_frame.grid_columnconfigure(0, weight=1)
 
         # Setup Matplotlib figure and canvas
         self.fig, self.ax = plt.subplots(figsize=(8, 4))  # Kleinere initiale Höhe
         self.fig.set_facecolor("#EEEEEE")  # Light grey background for the figure
-        self.canvas = FigureCanvasTkAgg(self.fig, master=plot_frame)
+        self.canvas = FigureCanvasTkAgg(self.fig, master=parent_frame)
         self.canvas_widget = self.canvas.get_tk_widget()
         self.canvas_widget.grid(row=0, column=0, sticky="nsew")
 
         # Add Matplotlib toolbar
-        self.toolbar = NavigationToolbar2Tk(self.canvas, plot_frame, pack_toolbar=False)
+        self.toolbar = NavigationToolbar2Tk(self.canvas, parent_frame, pack_toolbar=False)
         self.toolbar.update()
         self.toolbar.grid(row=1, column=0, sticky="ew")  # Position toolbar below canvas
         self.canvas_widget.config(cursor="hand2")  # Change cursor when hovering over plot
 
-        # Log output Frame
+    def _build_tracks_listbox(self, parent_frame):
+        """Build the tracks listbox (placeholder for future implementation)."""
+        # Placeholder for tracks listbox - will be implemented later
+        placeholder_label = ttk.Label(parent_frame, text="Tracks will be displayed here")
+        placeholder_label.pack(expand=True)
+
+    def _build_profile_plot(self, parent_frame):
+        """Build the profile plot (placeholder for future implementation)."""
+        # Placeholder for profile plot - will be implemented later
+        placeholder_label = ttk.Label(parent_frame, text="Profile plot will be displayed here")
+        placeholder_label.pack(expand=True)
+
+    def _on_log_window_close(self):
+        """Callback function when log window is closed."""
+        if self.log_window:
+            self.log_window.destroy()
+        self.log_window = None
+
+    def _build_log_window(self):
+        """Build the log window as a separate window."""
+        # Create log window
+        if self.log_window is not None:
+            return
+
+        self.log_window = tk.Toplevel(self.root)
+        self.log_window.title("Log Output")
+        self.log_window.geometry("800x400")
+
+        self.log_window.protocol("WM_DELETE_WINDOW", self._on_log_window_close)
+
+        # Log frame
+        log_frame = ttk.LabelFrame(self.log_window, text="Log Output")
+        log_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+
         log_frame.grid_rowconfigure(0, weight=1)  # Text widget
         log_frame.grid_columnconfigure(0, weight=1)  # Text widget
         log_frame.grid_rowconfigure(1, weight=0)  # Controls
@@ -431,6 +504,11 @@ class MainGui:
         options_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label="Options", menu=options_menu)
         options_menu.add_command(label="Settings", command=self._open_settings)
+
+        # View menu
+        options_menu = tk.Menu(menubar, tearoff=0)
+        menubar.add_cascade(label="View", menu=options_menu)
+        options_menu.add_command(label="Show Log", command=self._build_log_window)
 
         # Help menu
         help_menu = tk.Menu(menubar, tearoff=0)
