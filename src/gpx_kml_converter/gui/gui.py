@@ -589,11 +589,14 @@ class MainGui:
 
     def _update_tracks(self, gpx_obj: GPX):
         """Separate logic to update display based on listbox selection."""
+        new_tracks = [track.name for track in gpx_obj.tracks]
+        if list(self.tracks_listbox.get(0, tk.END)) == new_tracks:
+            return  # kein Update nötig
+
         self.tracks_listbox.delete(0, tk.END)
         self.selected_gpx = gpx_obj
-        for track in gpx_obj.tracks:
-            track_name = track.name
-            self.tracks_listbox.insert(tk.END, f"{track_name}")
+        for track_name in new_tracks:
+            self.tracks_listbox.insert(tk.END, track_name or "<Unnamed>")
 
     def _update_selected_file_display(self, listbox_widget, gpx_dict_source: dict[Path, GPX]):
         """Separate logic to update display based on listbox selection."""
@@ -604,7 +607,9 @@ class MainGui:
             file_path_str = listbox_item.split(" (")[-1].rstrip(")")
             self._parse_and_display_file(Path(file_path_str), gpx_dict_source)
         else:
-            self._clear_metadata_and_plot()
+            pass
+            # do not clear map data if focus is lost
+            # self._clear_metadata_and_plot()
 
     def _open_selected_file(self, event, gpx_dict_source: dict[Path, GPX]):
         """Opens the selected file in the system's default application or explorer.
@@ -890,7 +895,7 @@ class MainGui:
         self.metadata_text.delete(1.0, tk.END)
         self.metadata_text.config(state=tk.DISABLED)
         self.gpx_map_plotter.clear_plot()
-        self.gpx_profile_plotter.clear_plot()
+        """ self.gpx_profile_plotter.clear_plot() """
         self._last_selected_file_path = None
 
     def _open_settings(self):
