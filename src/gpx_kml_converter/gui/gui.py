@@ -496,10 +496,15 @@ class MainGui:
     def _on_file_selection(self, event, gpx_dict_source: dict[Path, GPX]):
         """Handle selection change in file listboxes to update metadata/plot."""
         selected_indices = event.widget.curselection()
+        widget = event.widget
+        self._update_selected_file_display(widget, gpx_dict_source)
+
+    def _update_selected_file_display(self, listbox_widget, gpx_dict_source: dict[Path, GPX]):
+        """Separate logic to update display based on listbox selection."""
+        selected_indices = listbox_widget.curselection()
         if selected_indices:
-            index = selected_indices[0]  # Get the first selected item
-            listbox_item = event.widget.get(index)
-            # Assuming listbox item format is "filename (filepath)"
+            index = selected_indices[0]
+            listbox_item = listbox_widget.get(index)
             file_path_str = listbox_item.split(" (")[-1].rstrip(")")
             self._parse_and_display_file(Path(file_path_str), gpx_dict_source)
         else:
@@ -574,10 +579,7 @@ class MainGui:
         if new_files_loaded > 0:
             self.input_file_listbox.selection_clear(0, tk.END)
             self.input_file_listbox.selection_set(0)
-            self._on_file_selection(
-                event=type("Event", (object,), {"widget": self.input_file_listbox}),
-                gpx_dict_source=self.gpx_input,
-            )  # Trigger display for the first loaded file
+            self._update_selected_file_display(self.input_file_listbox, self.gpx_input)
 
     def _run_processing(self, mode: str):
         """Run the selected processing mode in a separate thread."""
@@ -653,23 +655,17 @@ class MainGui:
         threading.Thread(target=processing_thread).start()
 
     def _update_gui_after_processing(self, processed_gpx_map: dict[Path, GPX]):
-        """Update GUI elements after processing is complete."""
+        """Update GUI elements after processing is complete (refactored version)."""
         self.gpx_output.update(processed_gpx_map)
         if processed_gpx_map:
             for path in processed_gpx_map.keys():
                 self.output_file_listbox.insert(tk.END, f"{path.name} ({path})")
+
             self.output_file_listbox.selection_clear(0, tk.END)
-            self.output_file_listbox.selection_set(0)  # Select the first generated file
-            self._on_file_selection(
-                event=type("Event", (object,), {"widget": self.output_file_listbox}),
-                gpx_dict_source=self.gpx_output,
-            )  # Trigger display
-            self.logger.info(
-                f"Successfully processed and generated {len(processed_gpx_map)} files."
-            )
-        else:
-            self.logger.info("Processing completed, but no files were generated.")
-            messagebox.showinfo("Info", "Processing completed, but no files were generated.")
+            self.output_file_listbox.selection_set(len(self.gpx_output) - 1)
+
+            # Direkt die extrahierte Logik aufrufen
+            self._update_selected_file_display(self.output_file_listbox, self.gpx_output)
 
     def _reset_ui_state(self):
         """Reset UI elements after processing completes or fails."""
