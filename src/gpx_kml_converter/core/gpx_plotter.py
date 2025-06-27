@@ -1,3 +1,4 @@
+import math
 from pathlib import Path
 
 from gpxpy.gpx import GPX
@@ -39,8 +40,10 @@ class GPXPlotter:
         self.pan_start_y = None
 
         self._connect_mpl_events()
+        self._setup_axes()
 
-        # Set initial plot properties
+    def _setup_axes(self):
+        """Sets up initial plot properties for the axes."""
         self.ax.set_facecolor("#EEEEEE")  # Light grey background for the axes
         self.ax.tick_params(
             left=False, right=False, labelleft=False, labelbottom=False, bottom=False
@@ -51,7 +54,7 @@ class GPXPlotter:
         self.canvas.draw_idle()
 
     def _load_shape_files(self):
-        # Load country borders once at startup if geopandas is available
+        """Load country borders once at startup if geopandas is available."""
         country_borders_gdf = None
         if GEOPANDAS_AVAILABLE:
             try:
@@ -173,10 +176,106 @@ class GPXPlotter:
         # Re-adjust limits if needed after resize, though Matplotlib usually handles aspect ratio.
         # If the plot becomes distorted, we might need a more complex `set_aspect` call here.
 
+    def _clear_axes_common(self):
+        """Common axes clearing and setup functionality."""
+        self.ax.clear()
+        self.ax.set_facecolor("#EEEEEE")
+
+    def _calculate_distance(self, point1, point2):
+        """
+        Calculate the distance between two GPS points using the Haversine formula.
+        Returns distance in kilometers.
+        """
+        if not all([point1.latitude, point1.longitude, point2.latitude, point2.longitude]):
+            return 0.0
+
+        lat1, lon1 = math.radians(point1.latitude), math.radians(point1.longitude)
+        lat2, lon2 = math.radians(point2.latitude), math.radians(point2.longitude)
+
+        dlat = lat2 - lat1
+        dlon = lon2 - lon1
+
+        a = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
+        c = 2 * math.asin(math.sqrt(a))
+
+        # Earth's radius in kilometers
+        r = 6371.0
+        return r * c
+
+    def _get_optimal_grid_spacing(self, data_range, target_divisions=8):
+        """
+        Calculate optimal grid spacing for given data range.
+        Returns a "nice" number for grid spacing.
+        """
+        if data_range <= 0:
+            return 1
+
+        # Calculate rough step size
+        rough_step = data_range / target_divisions
+
+        # Find the magnitude (power of 10)
+        magnitude = 10 ** math.floor(math.log10(rough_step))
+
+        # Normalize the rough step to be between 1 and 10
+        normalized = rough_step / magnitude
+
+        # Choose a "nice" number
+        if normalized <= 1:
+            nice_step = 1
+        elif normalized <= 2:
+            nice_step = 2
+        elif normalized <= 5:
+            nice_step = 5
+        else:
+            nice_step = 10
+
+        return nice_step * magnitude
+
+    def _setup_distance_grid(self, max_distance_km):
+        """Setup grid for distance axis (X-axis) with appropriate spacing."""
+        # Choose spacing based on total distance
+        if max_distance_km <= 12:
+            spacing = 1
+        elif max_distance_km <= 20:
+            spacing = 2
+        elif max_distance_km <= 60:
+            spacing = 5
+        elif max_distance_km <= 120:
+            spacing = 10
+        elif max_distance_km <= 600:
+            spacing = 50
+        else:
+            spacing = 100
+
+        return spacing
+
+    def _setup_elevation_grid(self, min_elevation, max_elevation):
+        """Setup grid for elevation axis (Y-axis) with appropriate spacing."""
+        elevation_range = max_elevation - min_elevation
+
+        if elevation_range <= 120:
+            spacing = 10
+        elif elevation_range <= 600:
+            spacing = 50
+        elif elevation_range <= 1200:
+            spacing = 100
+        elif elevation_range <= 2500:
+            spacing = 200
+        else:
+            spacing = 500
+
+        return spacing
+
+    def _find_track_by_name(self, gpx_data: GPX, track_name: str):
+        """Find a specific track by name in GPX data."""
+        for track in gpx_data.tracks:
+            if track.name == track_name:
+                return track
+        return None
+
     def plot_gpx_map(self, gpx_data: GPX):
         """Plots GPX data (tracks, routes, waypoints) on the Matplotlib canvas."""
-        self.ax.clear()  # Clear existing plot
-        self.ax.set_facecolor("#EEEEEE")  # Light grey background for the axes
+        self._clear_axes_common()
 
         # Plot country borders if loaded
         if self.country_borders_gdf is not None:
@@ -219,7 +318,7 @@ class GPXPlotter:
             all_points_coords.extend(zip(waypoint_lons, waypoint_lats))
 
         # Auto-adjust limits based on plotted data, or set default if no data
-        self._set_plot_limits(all_points_coords)
+        self._set_plot_limits_map(all_points_coords)
 
         self.ax.set_aspect("equal", adjustable="box")  # Maintain aspect ratio
         self.ax.tick_params(
@@ -228,12 +327,118 @@ class GPXPlotter:
         self.canvas.draw()  # Redraw the canvas
 
     def plot_track_profile(self, gpx_data: GPX, track_name: str):
-        # TODO
-        pass
-
-    def _set_plot_limits(self, all_points_coords):
         """
-        Sets the plot limits based on the provided coordinates or a default view.
+        Plots elevation profile of a specific track.
+        X-axis: Distance in kilometers
+        Y-axis: Elevation in meters
+        """
+        # Find the specific track
+        track = self._find_track_by_name(gpx_data, track_name)
+        if not track:
+            self.logger.warning(f"Track '{track_name}' not found in GPX data.")
+            self.clear_plot()
+            return
+
+        # Collect all points from all segments of the track
+        all_points = []
+        for segment in track.segments:
+            all_points.extend(segment.points)
+
+        if not all_points:
+            self.logger.warning(f"No points found in track '{track_name}'.")
+            self.clear_plot()
+            return
+
+        # Filter points with valid coordinates and elevation
+        valid_points = [
+            p
+            for p in all_points
+            if p.latitude is not None and p.longitude is not None and p.elevation is not None
+        ]
+
+        if len(valid_points) < 2:
+            self.logger.warning(
+                f"Not enough valid points with elevation data in track '{track_name}'."
+            )
+            self.clear_plot()
+            return
+
+        # Calculate cumulative distances and collect elevations
+        distances = [0.0]  # Start with 0 km
+        elevations = [valid_points[0].elevation]
+
+        cumulative_distance = 0.0
+        for i in range(1, len(valid_points)):
+            distance = self._calculate_distance(valid_points[i - 1], valid_points[i])
+            cumulative_distance += distance
+            distances.append(cumulative_distance)
+            elevations.append(valid_points[i].elevation)
+
+        # Clear and setup axes for profile plot
+        self._clear_axes_common()
+
+        # Plot the elevation profile
+        self.ax.plot(distances, elevations, color="darkgreen", linewidth=2, zorder=2)
+        self.ax.fill_between(distances, elevations, alpha=0.3, color="lightgreen", zorder=1)
+
+        # Setup grid
+        max_distance = max(distances) if distances else 1
+        min_elevation = min(elevations) - 10 if elevations else 0
+        max_elevation = max(elevations) + 10 if elevations else 100
+
+        # Distance grid (X-axis)
+        distance_spacing = self._setup_distance_grid(max_distance)
+        distance_ticks = []
+        distance = 0
+        while distance <= max_distance:
+            distance_ticks.append(distance)
+            distance += distance_spacing
+
+        # Elevation grid (Y-axis)
+        elevation_spacing = self._setup_elevation_grid(min_elevation, max_elevation)
+        # Round to nearest grid lines
+        min_elevation_grid = math.floor(min_elevation / elevation_spacing) * elevation_spacing
+        max_elevation_grid = math.ceil(max_elevation / elevation_spacing) * elevation_spacing
+
+        elevation_ticks = []
+        elevation = min_elevation_grid
+        while elevation <= max_elevation_grid:
+            elevation_ticks.append(elevation)
+            elevation += elevation_spacing
+
+        # Configure axes
+        self.ax.set_xlim(0, max_distance * 1.02)  # Small buffer
+        self.ax.set_ylim(min_elevation_grid, max_elevation_grid)
+
+        # Set grid
+        self.ax.set_xticks(distance_ticks)
+        self.ax.set_yticks(elevation_ticks)
+        self.ax.grid(True, alpha=0.3, linestyle="-", linewidth=0.5)
+
+        # Labels and formatting
+        self.ax.set_xlabel("Distance (km)", fontsize=10)
+        self.ax.set_ylabel("Height (m)", fontsize=10)
+        self.ax.set_title(f"Elevation profile: {track_name}", fontsize=12, fontweight="bold")
+
+        # Show axis labels and ticks for profile
+        self.ax.tick_params(left=True, right=False, labelleft=True, labelbottom=True, bottom=True)
+
+        # Don't maintain equal aspect ratio for profile plots
+        self.ax.set_aspect("auto")
+
+        # Update current limits for zoom/pan functionality
+        self.current_xlim = (0, max_distance * 1.02)
+        self.current_ylim = (min_elevation_grid, max_elevation_grid)
+
+        self.canvas.draw()
+        self.logger.info(
+            f"Plotted elevation profile for track '{track_name}' "
+            f"({len(valid_points)} points, {max_distance:.1f} km total distance)"
+        )
+
+    def _set_plot_limits_map(self, all_points_coords):
+        """
+        Sets the plot limits for map view based on the provided coordinates or a default view.
         Adds a buffer and ensures aspect ratio is maintained for better visualization.
         """
         if all_points_coords:
@@ -284,8 +489,7 @@ class GPXPlotter:
 
     def clear_plot(self):
         """Clears the matplotlib plot."""
-        self.ax.clear()
-        self.ax.set_facecolor("#EEEEEE")
+        self._clear_axes_common()
         self.ax.tick_params(
             left=False, right=False, labelleft=False, labelbottom=False, bottom=False
         )

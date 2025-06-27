@@ -144,8 +144,13 @@ class MainGui:
         self.ax = None
         self.canvas = None
         self.toolbar = None
+        self.fig1 = None
+        self.ax1 = None
+        self.canvas1 = None
+        self.toolbar1 = None
         self.country_borders_gdf = None  # GeoDataFrame for country borders
         self.gpx_map_plotter = None  # New GPXPlotter instance
+        self.gpx_profile_plotter = None  # New GPXPlotter instance
         self.log_window = None
 
         self._build_widgets()
@@ -173,7 +178,7 @@ class MainGui:
             self.fig1,
             self.ax1,
             self.canvas1,
-            self.logger1,
+            self.logger,
         )
 
     def _build_widgets(self):
@@ -200,7 +205,7 @@ class MainGui:
 
         # Files panel (left side of upper section)
         files_panel = ttk.Frame(upper_horizontal_paned)
-        upper_horizontal_paned.add(files_panel, weight=4)
+        upper_horizontal_paned.add(files_panel, weight=1)
 
         # Plot frame (right side of upper section)
         plot_frame = ttk.LabelFrame(upper_horizontal_paned, text="Map Visualization")
@@ -233,11 +238,11 @@ class MainGui:
 
         # Tracks listbox frame (middle in lower section)
         tracks_listbox_frame = ttk.LabelFrame(lower_horizontal_paned, text="Tracks")
-        lower_horizontal_paned.add(tracks_listbox_frame, weight=3)
+        lower_horizontal_paned.add(tracks_listbox_frame, weight=1)
 
         # Profile plot frame (right in lower section)
         profile_plot_frame = ttk.LabelFrame(lower_horizontal_paned, text="Profile Plot")
-        lower_horizontal_paned.add(profile_plot_frame, weight=5)
+        lower_horizontal_paned.add(profile_plot_frame, weight=1)
 
         # Build Input File list
         self._build_input_file_list(input_file_frame)
@@ -387,7 +392,7 @@ class MainGui:
         tracks_listbox_frame.grid_rowconfigure(0, weight=1)
         tracks_listbox_frame.grid_columnconfigure(0, weight=1)
 
-        _listbox.bind("<Button-1>", evt)
+        _listbox.bind("<<ListboxSelect>>", evt)
         return _listbox
 
     def _build_profile_plot(self, parent_frame):
@@ -400,13 +405,9 @@ class MainGui:
         self.fig1, self.ax1 = plt.subplots(figsize=(8, 4))  # Kleinere initiale Höhe
         self.fig1.set_facecolor("#EEEEEE")  # Light grey background for the figure
         self.canvas1 = FigureCanvasTkAgg(self.fig1, master=parent_frame)
-        self.canvas_widget1 = self.canvas.get_tk_widget()
+        self.canvas_widget1 = self.canvas1.get_tk_widget()
         self.canvas_widget1.grid(row=0, column=0, sticky="nsew")
 
-        # Add Matplotlib toolbar
-        self.toolbar1 = NavigationToolbar2Tk(self.canvas1, parent_frame, pack_toolbar=False)
-        self.toolbar1.update()
-        self.toolbar1.grid(row=1, column=0, sticky="ew")  # Position toolbar below canvas
         self.canvas_widget1.config(cursor="hand2")  # Change cursor when hovering over plot
 
     def _on_log_window_close(self):
@@ -584,16 +585,15 @@ class MainGui:
             index = selected_indices[0]
             track_name = listbox_widget.get(index)
             # Plotting
-            self.gpx_map_plotter.plot_track_profile(self.selected_gpx, track_name)
+            self.gpx_profile_plotter.plot_track_profile(self.selected_gpx, track_name)
 
     def _update_tracks(self, gpx_obj: GPX):
         """Separate logic to update display based on listbox selection."""
         self.tracks_listbox.delete(0, tk.END)
         self.selected_gpx = gpx_obj
-        for i, track in enumerate(gpx_obj.tracks):
-            track_name = track.name or f"Track {i + 1}"
-            distance_2d = track.length_2d()
-            self.tracks_listbox.insert(tk.END, f"{track_name} ({distance_2d / 1000:.1f} km)")
+        for track in gpx_obj.tracks:
+            track_name = track.name
+            self.tracks_listbox.insert(tk.END, f"{track_name}")
 
     def _update_selected_file_display(self, listbox_widget, gpx_dict_source: dict[Path, GPX]):
         """Separate logic to update display based on listbox selection."""

@@ -445,14 +445,7 @@ class BaseGPXProcessor:
 
                 # Process tracks
                 for track in gpx_obj.tracks:
-                    new_track = gpxpy.gpx.GPXTrack()
-                    new_track.name = track.name
-                    for segment in track.segments:
-                        optimized_points = self._optimize_track_points(segment.points)
-                        if optimized_points:
-                            new_segment = gpxpy.gpx.GPXTrackSegment()
-                            new_segment.points.extend(optimized_points)
-                            new_track.segments.append(new_segment)
+                    new_track = self._optimize_track(track)
                     if new_track.segments:
                         optimized_gpx.tracks.append(new_track)
 
@@ -488,6 +481,17 @@ class BaseGPXProcessor:
                 continue
         return generated_gpx_map
 
+    def _optimize_track(self, track):
+        new_track = gpxpy.gpx.GPXTrack()
+        new_track.name = track.name
+        for segment in track.segments:
+            optimized_points = self._optimize_track_points(segment.points)
+            if optimized_points:
+                new_segment = gpxpy.gpx.GPXTrackSegment()
+                new_segment.points.extend(optimized_points)
+                new_track.segments.append(new_segment)
+        return new_track
+
     def merge_files(self) -> dict[Path, GPX]:
         """Merge all given GPX objects into a single GPX file."""
         if not self.input_gpx_list:
@@ -505,13 +509,23 @@ class BaseGPXProcessor:
         for idx, gpx_obj in enumerate(self.input_gpx_list):
             try:
                 # Merge tracks
+                # Process tracks
                 for track in gpx_obj.tracks:
-                    merged_gpx.tracks.append(track)
-                    total_tracks += 1
-                # Merge routes
+                    new_track = self._optimize_track(track)
+                    if new_track.segments:
+                        merged_gpx.tracks.append(new_track)
+                        total_tracks += 1
+
+                # Process routes
                 for route in gpx_obj.routes:
-                    merged_gpx.routes.append(route)
-                    total_routes += 1
+                    new_route = gpxpy.gpx.GPXRoute()
+                    new_route.name = route.name
+                    optimized_points = self._optimize_track_points(route.points)
+                    if optimized_points:
+                        new_route.points.extend(optimized_points)
+                        merged_gpx.routes.append(new_route)
+                        total_routes += 1
+
                 # Merge waypoints
                 for waypoint in gpx_obj.waypoints:
                     merged_gpx.waypoints.append(self._optimize_waypoint(waypoint))
