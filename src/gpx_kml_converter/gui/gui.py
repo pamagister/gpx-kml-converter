@@ -22,10 +22,11 @@ import gpxpy  # Import gpxpy directly for metadata extraction
 # Matplotlib imports for plotting
 import matplotlib.pyplot as plt
 from config_cli_gui.gui import SettingsDialogGenerator, ToolTip
+from gpxpy.gpx import GPX
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 
 from gpx_kml_converter.config.config import ProjectConfigManager
-from gpx_kml_converter.core.base import BaseGPXProcessor  # Import GPXPlotter
+from gpx_kml_converter.core.base import BaseGPXProcessor, GeoFileManager  # Import GeoFileManager
 from gpx_kml_converter.core.gpx_plotter import GPXPlotter
 from gpx_kml_converter.core.logging import (
     connect_gui_logging,
@@ -128,12 +129,15 @@ class MainGui:
         self.logger_manager = initialize_logging(self.config_manager)
         self.logger = get_logger("gui.main")
 
-        # File lists
-        self.input_files = []
-        self.output_files = []
+        # File lists - now hold Path to GPX object mapping
+        self.gpx_input: dict[Path, GPX] = {}
+        self.gpx_output: dict[Path, GPX] = {}
         self._last_selected_file_path = (
             None  # To store path of file currently shown in metadata/plot
         )
+
+        # Initialize GeoFileManager
+        self.geo_file_manager = GeoFileManager(logger=self.logger)
 
         # Matplotlib elements
         self.fig = None
@@ -232,10 +236,10 @@ class MainGui:
         input_listbox_frame.grid_columnconfigure(0, weight=1)
 
         self.input_file_listbox.bind(
-            "<Double-Button-1>", lambda event: self._open_selected_file(event, self.input_files)
+            "<Double-Button-1>", lambda event: self._open_selected_file(event, self.gpx_input)
         )
         self.input_file_listbox.bind(
-            "<<ListboxSelect>>", lambda event: self._on_file_selection(event, self.input_files)
+            "<<ListboxSelect>>", lambda event: self._on_file_selection(event, self.gpx_input)
         )
 
         # Output File list (Right Pane)
@@ -269,10 +273,10 @@ class MainGui:
         output_listbox_frame.grid_columnconfigure(0, weight=1)
 
         self.output_file_listbox.bind(
-            "<Double-Button-1>", lambda event: self._open_selected_file(event, self.output_files)
+            "<Double-Button-1>", lambda event: self._open_selected_file(event, self.gpx_output)
         )
         self.output_file_listbox.bind(
-            "<<ListboxSelect>>", lambda event: self._on_file_selection(event, self.output_files)
+            "<<ListboxSelect>>", lambda event: self._on_file_selection(event, self.gpx_output)
         )
 
         # Middle top section: Buttons and Metadata mit horizontalem PanedWindow
@@ -300,7 +304,7 @@ class MainGui:
         self.clear_files_button = ttk.Button(
             button_frame,
             text="🗑️",
-            command=self._clear_input_files,
+            command=self._clear_files,
         )
         ToolTip(self.clear_files_button, "Clear Files")
         self.clear_files_button.pack(pady=8, fill=tk.X)
@@ -417,11 +421,9 @@ class MainGui:
         menubar.add_cascade(label="File", menu=file_menu)
         file_menu.add_command(label="Open...", command=self._open_files)
         file_menu.add_separator()
-
         # Create Run menu options dynamically
         for mode, _, tooltip in self.processing_modes:
             file_menu.add_command(label=tooltip, command=partial(self._run_processing, mode=mode))
-
         file_menu.add_separator()
         file_menu.add_command(label="Exit", command=self._on_closing)
 
@@ -441,7 +443,6 @@ class MainGui:
         """Setup GUI logging integration."""
         # Create GUI log writer
         self.gui_log_writer = GuiLogWriter(self.log_text)
-
         # Connect to logging system
         connect_gui_logging(self.gui_log_writer)
 
@@ -456,13 +457,12 @@ class MainGui:
         self.log_text.delete(1.0, tk.END)
         self.logger.debug("Log display cleared")
 
-    def _clear_input_files(self):
+    def _clear_files(self):
         """Clear the input file list."""
-        self.input_files.clear()
+        self.gpx_input.clear()
         self.input_file_listbox.delete(0, tk.END)
         self.logger.info("Input file list cleared")
-        """Clear the output file list."""
-        self.output_files.clear()
+        self.gpx_output.clear()
         self.output_file_listbox.delete(0, tk.END)
         self.logger.info("Generated file list cleared")
         self._clear_metadata_and_plot()  # Clear plot and metadata when output files are cleared
@@ -474,33 +474,46 @@ class MainGui:
             messagebox.showwarning("Warning", "No files selected to remove!")
             return
 
-        # Delete from listbox from end to start to avoid index issues
+        # Get paths of selected files to remove from gpx_input dict
+        paths_to_remove = []
         for i in reversed(selected_indices):
+            listbox_item = self.input_file_listbox.get(i)
+            # Assuming listbox item format is "filename (filepath)"
+            path_str = listbox_item.split(" (")[-1].rstrip(")")
+            paths_to_remove.append(Path(path_str))
+
             # If the removed file was the one currently displayed, clear metadata/plot
-            if self.input_files[i]["path"] == self._last_selected_file_path:
+            if Path(path_str) == self._last_selected_file_path:
                 self._clear_metadata_and_plot()
             self.input_file_listbox.delete(i)
-            del self.input_files[i]
+
+        for path in paths_to_remove:
+            if path in self.gpx_input:
+                del self.gpx_input[path]
+
         self.logger.info(f"Removed {len(selected_indices)} selected input files.")
 
-    def _on_file_selection(self, event, file_list_source):
+    def _on_file_selection(self, event, gpx_dict_source: dict[Path, GPX]):
         """Handle selection change in file listboxes to update metadata/plot."""
         selected_indices = event.widget.curselection()
         if selected_indices:
             index = selected_indices[0]  # Get the first selected item
-            file_path_str = file_list_source[index]["path"]
-            self._parse_and_display_file(Path(file_path_str))
+            listbox_item = event.widget.get(index)
+            # Assuming listbox item format is "filename (filepath)"
+            file_path_str = listbox_item.split(" (")[-1].rstrip(")")
+            self._parse_and_display_file(Path(file_path_str), gpx_dict_source)
         else:
             self._clear_metadata_and_plot()
 
-    def _open_selected_file(self, event, file_list_source):
+    def _open_selected_file(self, event, gpx_dict_source: dict[Path, GPX]):
         """Opens the selected file in the system's default application or explorer.
         Also triggers parsing and display for the selected file."""
         selection_index = event.widget.nearest(event.y)
         if selection_index == -1:  # No item clicked
             return
 
-        file_path_str = file_list_source[selection_index]["path"]
+        listbox_item = event.widget.get(selection_index)
+        file_path_str = listbox_item.split(" (")[-1].rstrip(")")
         file_path = Path(file_path_str)
 
         if not file_path.exists():
@@ -515,153 +528,276 @@ class MainGui:
                 subprocess.Popen(["open", file_path])
             else:
                 subprocess.Popen(["xdg-open", file_path])
-            self.logger.info(f"Opened file: {file_path}")
+            self.logger.info(f"Opened file: {file_path.name}")
         except Exception as e:
-            self.logger.error(f"Could not open file {file_path}: {e}")
-            messagebox.showerror("Error", f"Could not open file {file_path}: {e}")
+            self.logger.error(f"Could not open file {file_path.name}: {e}")
+            messagebox.showerror("Error", f"Could not open file {file_path.name}: {e}")
 
         # After opening, also parse and display it in the GUI
-        self._parse_and_display_file(file_path)
+        self._parse_and_display_file(file_path, gpx_dict_source)
 
     def _open_files(self):
         """Open file dialog and add files to list."""
-        files = filedialog.askopenfilenames(
+        file_paths = filedialog.askopenfilenames(
             title="Select input files",
             filetypes=[
-                ("GPX/KML files", "*.gpx *.kml *.zip"),  # Added KML support
+                ("GPX/KML/ZIP files", "*.gpx *.kml *.zip"),
                 ("GPX files", "*.gpx"),
                 ("KML files", "*.kml"),
-                ("ZIP files", "*.zip"),
+                ("ZIP archives", "*.zip"),
                 ("All files", "*.*"),
             ],
         )
-
-        new_files = 0
-        for file_path_str in files:
-            file_path = Path(file_path_str)
-            if file_path_str not in [f["path"] for f in self.input_files]:
-                try:
-                    file_size_kb = file_path.stat().st_size / 1024
-                    self.input_files.append({"path": file_path_str, "size": file_size_kb})
-                    self.input_file_listbox.insert(
-                        tk.END, f"{file_path.name} ({file_size_kb:.2f} KB)"
-                    )
-                    new_files += 1
-                except Exception as e:
-                    self.logger.warning(f"Could not get size for {file_path_str}: {e}")
-                    self.input_files.append({"path": file_path_str, "size": 0})
-                    self.input_file_listbox.insert(tk.END, f"{file_path.name} (N/A KB)")
-
-        if new_files > 0:
-            self.logger.info(f"Added {new_files} new files to processing list")
-        else:
-            self.logger.debug("No new files selected")
-
-    def _update_output_listbox(self, generated_files_info):
-        """Updates the output file listbox with newly generated files."""
-        self.output_file_listbox.delete(0, tk.END)  # Clear current list
-        self.output_files.clear()  # Clear internal list
-        for file_path_str in generated_files_info:
-            file_path = Path(file_path_str)
-            try:
-                file_size_kb = file_path.stat().st_size / 1024
-                self.output_files.append({"path": file_path_str, "size": file_size_kb})
-                self.output_file_listbox.insert(tk.END, f"{file_path.name} ({file_size_kb:.2f} KB)")
-            except Exception as e:
-                self.logger.warning(f"Could not get size for generated file {file_path_str}: {e}")
-                self.output_files.append({"path": file_path_str, "size": 0})
-                self.output_file_listbox.insert(tk.END, f"{file_path.name} (N/A KB)")
-
-        if generated_files_info:
-            output_dir = Path(generated_files_info[0]).parent
-            self.logger.info(f"Generated files saved in: {output_dir}")  # Log directory
-
-    def _run_processing(self, mode="compress_files"):
-        """Run the processing in a separate thread."""
-        selected_indices = self.input_file_listbox.curselection()
-        files_to_process = []
-
-        if selected_indices:
-            for i in selected_indices:
-                files_to_process.append(self.input_files[i]["path"])
-        else:
-            files_to_process = [f["path"] for f in self.input_files]
-
-        if not files_to_process:
-            self.logger.warning("No input files selected or all are deselected.")
-            messagebox.showwarning("Warning", "No input files selected or all are deselected!")
+        if not file_paths:
             return
 
-        self.logger.info(f"Starting processing of {len(files_to_process)} files in mode: {mode}")
+        new_files_loaded = 0
+        file_paths_as_paths = [Path(fp) for fp in file_paths]
 
-        # Disable all buttons during processing
-        for button in self.run_buttons.values():
-            button.config(state="disabled")
-        self.clear_files_button.config(state="disabled")
-        self.progress.start()
+        # Use GeoFileManager to load files
+        loaded_gpx_map = self.geo_file_manager.load_files(file_paths_as_paths)
 
-        # Run in separate thread to avoid blocking GUI
-        thread = threading.Thread(
-            target=self._process_files,
-            args=(
-                mode,
-                files_to_process,
-            ),
-            daemon=True,
-        )
-        thread.start()
+        if not loaded_gpx_map:
+            self.logger.warning("No GPX data could be loaded from the selected files.")
+            messagebox.showinfo("Info", "No GPX data could be loaded from the selected files.")
+            return
 
-    def _process_files(self, mode="compress_files", files_to_process=None):
-        """Process the selected files."""
-        generated_files_paths = []
-        try:
-            self.logger.info("=== Processing Started ===")
-            self.logger.info("Processing files...")
-
-            if files_to_process is None:
-                files_to_process = []  # Should not happen with the check in _run_processing
-
-            # Create and run project
-            project = BaseGPXProcessor(
-                files_to_process,  # Pass selected files
-                self.config_manager.get_category("cli").output.default,
-                self.config_manager.get_category("cli").min_dist.default,
-                self.config_manager.get_category("app").date_format.default,
-                self.config_manager.get_category("cli").elevation.default,
-                self.logger,
-            )
-            # implement switch case for different processing modes
-            if mode == "compress_files":
-                generated_files_paths = project.compress_files()
-            elif mode == "merge_files":
-                generated_files_paths = project.merge_files()
-            elif mode == "extract_pois":
-                generated_files_paths = project.extract_pois()
+        for path, gpx_obj in loaded_gpx_map.items():
+            if path not in self.gpx_input:
+                self.gpx_input[path] = gpx_obj
+                self.input_file_listbox.insert(tk.END, f"{path.name} ({path})")
+                new_files_loaded += 1
             else:
-                self.logger.warning(f"Unknown mode: {mode}")
+                self.logger.info(f"File {path.name} already loaded. Skipping.")
 
-            self.logger.info(f"Completed: {len(files_to_process)} files processed")
-            self.logger.info("=== All files processed successfully! ===")
+        self.logger.info(f"Loaded {new_files_loaded} new GPX files.")
+        if new_files_loaded > 0:
+            self.input_file_listbox.selection_clear(0, tk.END)
+            self.input_file_listbox.selection_set(0)
+            self._on_file_selection(
+                event=type("Event", (object,), {"widget": self.input_file_listbox}),
+                gpx_dict_source=self.gpx_input,
+            )  # Trigger display for the first loaded file
 
-            self.root.after(0, self._update_output_listbox, generated_files_paths)
+    def _run_processing(self, mode: str):
+        """Run the selected processing mode in a separate thread."""
+        selected_indices = self.input_file_listbox.curselection()
+        if not selected_indices:
+            messagebox.showwarning("Warning", "Please select at least one input file to process.")
+            return
 
-        except Exception as err:
-            self.logger.error(f"Processing failed: {err}", exc_info=True)
-            # Show error dialog in main thread
-            self.root.after(
-                0, lambda e=err: messagebox.showerror("Error", f"Processing failed: {e}")
-            )
+        selected_gpx_objects = []
+        selected_file_paths = []  # Keep track of original paths for output naming if needed
+        for index in selected_indices:
+            listbox_item = self.input_file_listbox.get(index)
+            file_path_str = listbox_item.split(" (")[-1].rstrip(")")
+            file_path = Path(file_path_str)
+            if file_path in self.gpx_input:
+                selected_gpx_objects.append(self.gpx_input[file_path])
+                selected_file_paths.append(file_path)
+            else:
+                self.logger.warning(
+                    f"Selected file {file_path.name} not found in loaded GPX data. Skipping."
+                )
 
-        finally:
-            # Re-enable controls in main thread
-            self.root.after(0, self._processing_finished)
+        if not selected_gpx_objects:
+            messagebox.showwarning("Warning", "No valid GPX objects selected for processing.")
+            return
 
-    def _processing_finished(self):
-        """Re-enable controls after processing is finished."""
         for button in self.run_buttons.values():
-            button.config(state="normal")
-        self.clear_files_button.config(state="normal")
+            button.config(state=tk.DISABLED)
+        self.clear_files_button.config(state=tk.DISABLED)
+        self.progress.start()
+        self.logger.info(f"Starting '{mode}' processing for {len(selected_gpx_objects)} files...")
+
+        # Clear previous output files and listbox
+        # self.gpx_output.clear()
+        self.output_file_listbox.delete(0, tk.END)
+        self._clear_metadata_and_plot()
+
+        def processing_thread():
+            try:
+                processor = BaseGPXProcessor(
+                    input_gpx_list=selected_gpx_objects,
+                    output=self.config_manager.get_category("cli").output.default,
+                    min_dist=self.config_manager.get_category("cli").min_dist.default,
+                    date_format=self.config_manager.get_category("app").date_format.default,
+                    elevation=self.config_manager.get_category("cli").elevation.default,
+                    logger=self.logger,
+                )
+
+                if mode == "compress_files":
+                    processed_gpx_map = processor.compress_files()
+                elif mode == "merge_files":
+                    # For merging, typically all selected files are merged into one output
+                    # The processor should handle creating a single output GPX
+                    processed_gpx_map = processor.merge_files()
+                elif mode == "extract_pois":
+                    processed_gpx_map = processor.extract_pois()
+                else:
+                    self.logger.error(f"Unknown processing mode: {mode}")
+                    processed_gpx_map = {}
+
+                # Update GUI after processing
+                self.root.after(0, self._update_gui_after_processing, processed_gpx_map)
+
+            except Exception as err:
+                self.logger.error(f"Error during {mode} processing: {err}")
+                self.logger.debug(f"Full traceback:\n{traceback.format_exc()}")
+                self.root.after(
+                    0, lambda e=err: messagebox.showerror("Error", f"Processing failed: {e}")
+                )
+            finally:
+                self.root.after(0, self._reset_ui_state)
+
+        threading.Thread(target=processing_thread).start()
+
+    def _update_gui_after_processing(self, processed_gpx_map: dict[Path, GPX]):
+        """Update GUI elements after processing is complete."""
+        self.gpx_output.update(processed_gpx_map)
+        if processed_gpx_map:
+            for path in processed_gpx_map.keys():
+                self.output_file_listbox.insert(tk.END, f"{path.name} ({path})")
+            self.output_file_listbox.selection_clear(0, tk.END)
+            self.output_file_listbox.selection_set(0)  # Select the first generated file
+            self._on_file_selection(
+                event=type("Event", (object,), {"widget": self.output_file_listbox}),
+                gpx_dict_source=self.gpx_output,
+            )  # Trigger display
+            self.logger.info(
+                f"Successfully processed and generated {len(processed_gpx_map)} files."
+            )
+        else:
+            self.logger.info("Processing completed, but no files were generated.")
+            messagebox.showinfo("Info", "Processing completed, but no files were generated.")
+
+    def _reset_ui_state(self):
+        """Reset UI elements after processing completes or fails."""
         self.progress.stop()
+        for button in self.run_buttons.values():
+            button.config(state=tk.NORMAL)
+        self.clear_files_button.config(state=tk.NORMAL)
+
+    def _parse_and_display_file(self, file_path: Path, gpx_dict_source: dict[Path, GPX]):
+        """Parse the selected GPX/KML file and display its metadata and plot."""
+        self._clear_metadata_and_plot()
+        self._last_selected_file_path = file_path
+
+        gpx_obj = gpx_dict_source.get(file_path)
+
+        if not gpx_obj:
+            self.logger.error(f"GPX object not found for path: {file_path}")
+            self.metadata_text.config(state=tk.NORMAL)
+            self.metadata_text.insert(
+                tk.END, f"Error: Could not load GPX data for {file_path.name}\n"
+            )
+            self.metadata_text.config(state=tk.DISABLED)
+            return
+
+        self.logger.info(f"Displaying metadata and plot for: {file_path.name}")
+        self._display_gpx_metadata(gpx_obj, file_path.name)
+
+        # Plotting
+        self.gpx_plotter.plot_gpx_data(gpx_obj)
+
+    def _display_gpx_metadata(self, gpx_obj: GPX, file_name: str):
+        """Display metadata for the given GPX object."""
+        self.metadata_text.config(state=tk.NORMAL)
+        self.metadata_text.delete(1.0, tk.END)  # Clear previous content
+
+        self.metadata_text.insert(tk.END, f"File: {file_name}\n\n")
+        self.metadata_text.insert(tk.END, "--- GPX Metadata ---\n")
+        self.metadata_text.insert(tk.END, f"Creator: {gpx_obj.creator or 'N/A'}\n")
+
+        if gpx_obj.name:
+            self.metadata_text.insert(tk.END, f"Name: {gpx_obj.name}\n")
+        if gpx_obj.description:
+            self.metadata_text.insert(tk.END, f"Description: {gpx_obj.description}\n")
+
+        self.metadata_text.insert(tk.END, "\n--- Tracks ---\n")
+        if not gpx_obj.tracks:
+            self.metadata_text.insert(tk.END, "No tracks found.\n")
+        for i, track in enumerate(gpx_obj.tracks):
+            track_name = track.name or f"Track {i + 1}"
+            distance_2d = track.length_2d()
+            self.metadata_text.insert(tk.END, f"  - {track_name}: {distance_2d / 1000:.2f} km")
+
+            uphill, downhill = None, None
+            try:
+                # Temporary track for elevation calculation
+                temp_track = gpxpy.gpx.GPXTrack()
+                for segment in track.segments:
+                    temp_segment = gpxpy.gpx.GPXTrackSegment()
+                    temp_segment.points.extend(segment.points)
+                    temp_track.segments.append(temp_segment)
+
+                if temp_track.segments:
+                    up_down = temp_track.get_uphill_downhill()
+                    uphill = up_down.uphill
+                    downhill = up_down.downhill
+            except Exception as err:
+                self.logger.debug(
+                    f"Could not calculate uphill/downhill for track {track_name}: {err}"
+                )
+
+            if uphill is not None and downhill is not None:
+                self.metadata_text.insert(tk.END, f" (↑{uphill:.1f}m ↓{downhill:.1f}m)\n")
+            else:
+                self.metadata_text.insert(tk.END, "\n")
+
+        self.metadata_text.insert(tk.END, "\n--- Routes ---\n")
+        if not gpx_obj.routes:
+            self.metadata_text.insert(tk.END, "No routes found.\n")
+        for i, route in enumerate(gpx_obj.routes):
+            route_name = route.name or f"Route {i + 1}"
+            distance_2d = route.length_2d()
+            self.metadata_text.insert(tk.END, f"  - {route_name}: {distance_2d / 1000:.2f} km")
+
+            uphill, downhill = None, None
+            try:
+                # Temporary track for elevation calculation
+                temp_track = gpxpy.gpx.GPXTrack()
+                temp_segment = gpxpy.gpx.GPXTrackSegment()
+                temp_segment.points.extend(route.points)
+                temp_track.segments.append(temp_segment)
+                up_down = temp_track.get_uphill_downhill()
+                uphill = up_down.uphill
+                downhill = up_down.downhill
+            except Exception as err:
+                self.logger.debug(
+                    f"Could not calculate uphill/downhill for route {route_name}: {err}"
+                )
+
+            if uphill is not None and downhill is not None:
+                self.metadata_text.insert(tk.END, f" (↑{uphill:.1f}m ↓{downhill:.1f}m)\n")
+            else:
+                self.metadata_text.insert(tk.END, "\n")
+
+        self.metadata_text.insert(tk.END, "\n--- Waypoints ---\n")
+        if not gpx_obj.waypoints:
+            self.metadata_text.insert(tk.END, "No waypoints found.\n")
+        for i, waypoint in enumerate(gpx_obj.waypoints):
+            waypoint_name = waypoint.name or f"Waypoint {i + 1}"
+            self.metadata_text.insert(
+                tk.END,
+                f"  - {waypoint_name}: Lat {waypoint.latitude:.4f}, Lon {waypoint.longitude:.4f}",
+            )
+            if waypoint.elevation is not None:
+                self.metadata_text.insert(tk.END, f", Alt {waypoint.elevation:.1f}m\n")
+            else:
+                self.metadata_text.insert(tk.END, "\n")
+
+        self.metadata_text.insert(tk.END, "\n")
+
+        self.metadata_text.config(state=tk.DISABLED)  # Disable editing
+
+    def _clear_metadata_and_plot(self):
+        """Clear the metadata text area and the plot."""
+        self.metadata_text.config(state=tk.NORMAL)
+        self.metadata_text.delete(1.0, tk.END)
+        self.metadata_text.config(state=tk.DISABLED)
+        self.gpx_plotter.clear_plot()
+        self._last_selected_file_path = None
 
     def _open_settings(self):
         """Open the settings dialog."""
@@ -676,187 +812,37 @@ class MainGui:
             self.log_level_var.set(self.config_manager.get_category("app").log_level.default)
 
     def _open_help(self):
-        """Open help documentation in browser."""
-        self.logger.debug("Opening help documentation")
-        webbrowser.open("https://gpx-kml-converter.readthedocs.io/en/stable/")
+        """Open the help documentation."""
+        help_url = "https://gpx-kml-converter.readthedocs.io/en/stable/"
+        if help_url:
+            try:
+                webbrowser.open(help_url)
+                self.logger.info(f"Opened help documentation: {help_url}")
+            except Exception as e:
+                self.logger.error(f"Could not open help URL {help_url}: {e}")
+                messagebox.showerror("Error", f"Could not open help documentation: {e}")
+        else:
+            self.logger.warning("Help URL not configured.")
+            messagebox.showinfo("Info", "Help URL is not configured.")
 
     def _show_about(self):
-        """Show about dialog."""
-        self.logger.debug("Showing about dialog")
-        messagebox.showinfo("About", "gpx-kml-converter\n\nCopyright by Paul")
+        """Display about information."""
+        __version__ = "0.1.0"  # Assuming a version number, replace if dynamic
+        about_message = (
+            f"gpx-kml-converter GUI Application\n"
+            f"Version: {__version__}\n"
+            f"Developed by: Your Name/Organization\n"
+            f"Description: A tool to process and visualize GPX/KML files."
+        )
+        messagebox.showinfo("About gpx-kml-converter", about_message)
+        self.logger.info("About dialog displayed.")
 
     def _on_closing(self):
         """Handle application closing."""
-        self.logger.info("Closing GUI application")
+        self.logger.info("Shutting down GUI application.")
         disconnect_gui_logging()
         self.root.quit()
         self.root.destroy()
-
-    def _clear_metadata_and_plot(self):
-        """Clears the metadata text and the matplotlib plot."""
-        self.metadata_text.config(state=tk.NORMAL)
-        self.metadata_text.delete(1.0, tk.END)
-        self.metadata_text.config(state=tk.DISABLED)
-
-        if self.gpx_plotter:
-            self.gpx_plotter.clear_plot()
-        else:
-            self.ax.clear()
-            self.ax.set_facecolor("#EEEEEE")  # Reset background
-            self.ax.tick_params(
-                left=False, right=False, labelleft=False, labelbottom=False, bottom=False
-            )  # Hide axis labels and ticks
-            self.canvas.draw()
-        self._last_selected_file_path = None
-        self.logger.debug("Cleared metadata display and plot.")
-
-    def _parse_and_display_file(self, file_path: Path):
-        """Parses a GPX/KML file and updates the metadata display and plot."""
-        if not file_path or not file_path.exists():
-            self.logger.warning(f"File does not exist or is not specified: {file_path}")
-            self._clear_metadata_and_plot()
-            return
-
-        if self._last_selected_file_path == file_path:
-            self.logger.debug(f"File {file_path.name} is already displayed.")
-            return
-
-        self.logger.info(f"Parsing and displaying file: {file_path.name}")
-        self._last_selected_file_path = file_path
-
-        # Clear previous data
-        self._clear_metadata_and_plot()
-
-        # Use BaseGPXProcessor to load the file
-        try:
-            temp_processor = BaseGPXProcessor(
-                input_=str(file_path),
-                logger=self.logger,
-                output=None,
-                min_dist=0,
-                date_format="%Y-%m-%d",
-                elevation=True,  # Set elevation to True to get stats
-            )
-            gpx_data = None
-            if file_path.suffix.lower() == ".gpx":
-                gpx_data = temp_processor._load_gpx_file(file_path)
-            elif file_path.suffix.lower() == ".kml":
-                gpx_data = temp_processor._load_kml_file(file_path)
-            else:
-                self.logger.warning(f"Unsupported file type for visualization: {file_path.suffix}")
-                self.metadata_text.config(state=tk.NORMAL)
-                self.metadata_text.insert(
-                    tk.END, f"Unsupported file type for visualization: {file_path.suffix}"
-                )
-                self.metadata_text.config(state=tk.DISABLED)
-                return
-
-            if gpx_data:
-                self._update_metadata_display(gpx_data, file_path.name)
-                # Delegate plotting to GPXPlotter
-                if self.gpx_plotter:
-                    self.gpx_plotter.plot_gpx_data(gpx_data)
-                else:
-                    self.logger.error("GPXPlotter not initialized.")
-            else:
-                self.logger.error(f"Failed to load GPX/KML data from {file_path.name}")
-                self.metadata_text.config(state=tk.NORMAL)
-                self.metadata_text.insert(
-                    tk.END,
-                    f"Failed to load GPX/KML data from {file_path.name}.\nCheck log for details.",
-                )
-                self.metadata_text.config(state=tk.DISABLED)
-
-        except Exception as e:
-            self.logger.error(f"Error parsing file {file_path.name}: {e}", exc_info=True)
-            self._clear_metadata_and_plot()
-            self.metadata_text.config(state=tk.NORMAL)
-            self.metadata_text.insert(
-                tk.END,
-                f"Error processing file {file_path.name}:\n{e}\nCheck log for full traceback.",
-            )
-            self.metadata_text.config(state=tk.DISABLED)
-
-    def _update_metadata_display(self, gpx_data: gpxpy.gpx.GPX, file_name: str):
-        """Updates the metadata text widget with information from the GPX data."""
-        self.metadata_text.config(state=tk.NORMAL)  # Enable editing
-        self.metadata_text.delete(1.0, tk.END)
-
-        self.metadata_text.insert(tk.END, f"File: {file_name}\n")
-        self.metadata_text.insert(tk.END, "-------------------------------------\n")
-
-        num_tracks = len(gpx_data.tracks)
-        num_routes = len(gpx_data.routes)
-        num_waypoints = len(gpx_data.waypoints)
-
-        self.metadata_text.insert(tk.END, f"Tracks: {num_tracks}\n")
-        self.metadata_text.insert(tk.END, f"Routes: {num_routes}\n")
-        self.metadata_text.insert(tk.END, f"Waypoints: {num_waypoints}\n")
-        self.metadata_text.insert(tk.END, "\n")
-
-        # Display Tracks
-        if num_tracks > 0:
-            self.metadata_text.insert(tk.END, "Tracks:\n")
-            for i, track in enumerate(gpx_data.tracks):
-                track_name = track.name if track.name else f"Unnamed Track {i + 1}"
-                distance_2d = track.length_2d() if track.length_2d() is not None else 0
-
-                # Calculate uphill/downhill if elevation data is present
-                uphill, downhill = 0, 0
-                if track.segments:
-                    # gpxpy has built-in functions for this if elevation is present
-                    try:
-                        up_down = track.get_uphill_downhill()
-                        uphill = up_down.uphill
-                        downhill = up_down.downhill
-                    except Exception as e:
-                        self.logger.debug(
-                            f"Could not calculate uphill/downhill for track {track_name}: {e}"
-                        )
-
-                self.metadata_text.insert(tk.END, f"  - {track_name}: {distance_2d / 1000:.2f} km")
-                if uphill is not None and downhill is not None:
-                    self.metadata_text.insert(tk.END, f" (↑{uphill:.1f}m ↓{downhill:.1f}m)\n")
-                else:
-                    self.metadata_text.insert(tk.END, "\n")
-            self.metadata_text.insert(tk.END, "\n")
-
-        # Display Routes
-        if num_routes > 0:
-            self.metadata_text.insert(tk.END, "Routes:\n")
-            for i, route in enumerate(gpx_data.routes):
-                route_name = route.name if route.name else f"Unnamed Route {i + 1}"
-                distance_2d = route.length_2d() if route.length_2d() is not None else 0
-
-                # Calculate uphill/downhill for routes
-                uphill, downhill = 0, 0
-                # gpxpy does not directly provide get_uphill_downhill for routes,
-                # so we can manually iterate or if it's treated like a track internally
-                # For now, let's keep it simple or implement manual calculation if needed.
-                # Assuming BaseGPXProcessor would handle elevation adjustments on points.
-                if route.points:
-                    try:
-                        # Temporary track for elevation calculation
-                        temp_track = gpxpy.gpx.GPXTrack()
-                        temp_segment = gpxpy.gpx.GPXTrackSegment()
-                        temp_segment.points.extend(route.points)
-                        temp_track.segments.append(temp_segment)
-                        up_down = temp_track.get_uphill_downhill()
-                        uphill = up_down.uphill
-                        downhill = up_down.downhill
-                    except Exception as e:
-                        self.logger.debug(
-                            f"Could not calculate uphill/downhill for route {route_name}: {e}"
-                        )
-
-                self.metadata_text.insert(tk.END, f"  - {route_name}: {distance_2d / 1000:.2f} km")
-                if uphill is not None and downhill is not None:
-                    self.metadata_text.insert(tk.END, f" (↑{uphill:.1f}m ↓{downhill:.1f}m)\n")
-                else:
-                    self.metadata_text.insert(tk.END, "\n")
-            self.metadata_text.insert(tk.END, "\n")
-
-        self.metadata_text.config(state=tk.DISABLED)  # Disable editing
 
 
 def main():
@@ -866,9 +852,17 @@ def main():
         MainGui(root)
         root.mainloop()
     except Exception as e:
-        print(f"GUI startup failed: {e}")
-        traceback.print_exc()
-        sys.exit(1)
+        # Catch any unhandled exceptions to log them before exiting
+        logger = get_logger("gui.main")
+        logger.critical(f"Unhandled exception in main GUI loop: {e}")
+        logger.critical(f"Full traceback:\n{traceback.format_exc()}")
+        messagebox.showerror(
+            "Critical Error",
+            f"An unhandled error occurred: {e}\nPlease check the log for details.",
+        )
+    finally:
+        # Ensure logging is disconnected even if an error occurs
+        disconnect_gui_logging()
 
 
 if __name__ == "__main__":
