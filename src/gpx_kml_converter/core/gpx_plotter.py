@@ -173,7 +173,7 @@ class GPXPlotter:
         # Re-adjust limits if needed after resize, though Matplotlib usually handles aspect ratio.
         # If the plot becomes distorted, we might need a more complex `set_aspect` call here.
 
-    def plot_gpx_data(self, gpx_data: GPX):
+    def plot_gpx_map(self, gpx_data: GPX):
         """Plots GPX data (tracks, routes, waypoints) on the Matplotlib canvas."""
         self.ax.clear()  # Clear existing plot
         self.ax.set_facecolor("#EEEEEE")  # Light grey background for the axes
@@ -226,6 +226,10 @@ class GPXPlotter:
             left=False, right=False, labelleft=False, labelbottom=False, bottom=False
         )  # Hide axis labels and ticks
         self.canvas.draw()  # Redraw the canvas
+
+    def plot_track_profile(self, gpx_data: GPX, track_name: str):
+        # TODO
+        pass
 
     def _set_plot_limits(self, all_points_coords):
         """

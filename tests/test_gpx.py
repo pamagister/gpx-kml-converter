@@ -9,7 +9,7 @@ from gpxpy.gpx import GPXTrackPoint
 
 from gpx_kml_converter.config.config import ProjectConfigManager
 from gpx_kml_converter.core.logging import initialize_logging
-from src.gpx_kml_converter.core.base import BaseGPXProcessor
+from src.gpx_kml_converter.core.base import BaseGPXProcessor, GeoFileManager
 
 
 class TestGPXProcessor(unittest.TestCase):
@@ -30,9 +30,17 @@ class TestGPXProcessor(unittest.TestCase):
         # Ensure the output directory exists
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.logger = initialize_logging(ProjectConfigManager()).get_logger("TestGPXProcessor")
-
+        self.geo_file_manager = GeoFileManager(logger=self.logger)
+        gpx_objects = self.geo_file_manager.load_files(
+            [
+                self.test_gpx_file,
+            ]
+        )
+        self.gpx_object = [
+            gpx_objects.get(self.test_gpx_file),
+        ]
         self.processor = BaseGPXProcessor(
-            input_=str(self.test_gpx_file),
+            input_gpx_list=self.gpx_object,
             output=str(self.output_dir),
             logger=self.logger,
         )
@@ -246,9 +254,9 @@ class TestGPXProcessor(unittest.TestCase):
         """
         # Ensure the output directory is clean before compression
         shutil.rmtree(self.output_dir)
-        compressed_file_path = self.output_dir / f"compressed_{self.test_gpx_file.name}"
+        compressed_file_path = self.output_dir / f"optimized_{self.test_gpx_file.name}"
         self.output_dir.mkdir()
-        print(f"files to compress: {self.processor._get_input_files()}")
+
         self.processor.compress_files()
 
         # Check if the compressed file exists
@@ -299,12 +307,12 @@ class TestGPXProcessor(unittest.TestCase):
         shutil.copy(dummy_gpx_path, merge_input_dir)
 
         self.processor = BaseGPXProcessor(
-            input_=str(merge_input_dir), output=str(self.output_dir), logger=self.logger
+            input_gpx_list=self.gpx_object, output=str(self.output_dir), logger=self.logger
         )
 
         self.processor.merge_files()
 
-        merged_file_path = self.output_dir / "merged_tracks.gpx"
+        merged_file_path = self.output_dir / "merged_output.gpx"
         self.assertTrue(merged_file_path.exists())
 
         merged_gpx = gpxpy.parse(open(merged_file_path, "r", encoding="utf-8"))

@@ -145,7 +145,7 @@ class MainGui:
         self.canvas = None
         self.toolbar = None
         self.country_borders_gdf = None  # GeoDataFrame for country borders
-        self.gpx_plotter = None  # New GPXPlotter instance
+        self.gpx_map_plotter = None  # New GPXPlotter instance
         self.log_window = None
 
         self._build_widgets()
@@ -162,11 +162,18 @@ class MainGui:
         self.logger_manager.log_config_summary()
 
         # Initialize GPXPlotter after country borders are loaded
-        self.gpx_plotter = GPXPlotter(
+        self.gpx_map_plotter = GPXPlotter(
             self.fig,
             self.ax,
             self.canvas,
             self.logger,
+        )
+
+        self.gpx_profile_plotter = GPXPlotter(
+            self.fig1,
+            self.ax1,
+            self.canvas1,
+            self.logger1,
         )
 
     def _build_widgets(self):
@@ -226,11 +233,11 @@ class MainGui:
 
         # Tracks listbox frame (middle in lower section)
         tracks_listbox_frame = ttk.LabelFrame(lower_horizontal_paned, text="Tracks")
-        lower_horizontal_paned.add(tracks_listbox_frame, weight=1)
+        lower_horizontal_paned.add(tracks_listbox_frame, weight=3)
 
         # Profile plot frame (right in lower section)
         profile_plot_frame = ttk.LabelFrame(lower_horizontal_paned, text="Profile Plot")
-        lower_horizontal_paned.add(profile_plot_frame, weight=1)
+        lower_horizontal_paned.add(profile_plot_frame, weight=5)
 
         # Build Input File list
         self._build_input_file_list(input_file_frame)
@@ -255,72 +262,20 @@ class MainGui:
 
     def _build_input_file_list(self, parent_frame):
         """Build the input file listbox with scrollbars."""
-        # Frame für Listbox mit beiden Scrollbars
-        input_listbox_frame = ttk.Frame(parent_frame)
-        input_listbox_frame.pack(fill=tk.BOTH, expand=True, padx=0, pady=0)
-
-        self.input_file_listbox = tk.Listbox(input_listbox_frame, selectmode=tk.EXTENDED)
-
-        # Vertikale Scrollbar
-        input_file_v_scrollbar = ttk.Scrollbar(
-            input_listbox_frame, orient="vertical", command=self.input_file_listbox.yview
+        self.input_file_listbox = self.__build_listbox(
+            parent_frame, lambda event: self._on_file_selection(event, self.gpx_input)
         )
-        self.input_file_listbox.configure(yscrollcommand=input_file_v_scrollbar.set)
-
-        # Horizontale Scrollbar
-        input_file_h_scrollbar = ttk.Scrollbar(
-            input_listbox_frame, orient="horizontal", command=self.input_file_listbox.xview
-        )
-        self.input_file_listbox.configure(xscrollcommand=input_file_h_scrollbar.set)
-
-        # Grid layout für Listbox und Scrollbars
-        self.input_file_listbox.grid(row=0, column=0, sticky="nsew")
-        input_file_v_scrollbar.grid(row=0, column=1, sticky="ns")
-        input_file_h_scrollbar.grid(row=1, column=0, sticky="ew")
-
-        input_listbox_frame.grid_rowconfigure(0, weight=1)
-        input_listbox_frame.grid_columnconfigure(0, weight=1)
-
         self.input_file_listbox.bind(
             "<Double-Button-1>", lambda event: self._open_selected_file(event, self.gpx_input)
-        )
-        self.input_file_listbox.bind(
-            "<<ListboxSelect>>", lambda event: self._on_file_selection(event, self.gpx_input)
         )
 
     def _build_output_file_list(self, parent_frame):
         """Build the output file listbox with scrollbars."""
-        # Frame für Listbox mit beiden Scrollbars
-        output_listbox_frame = ttk.Frame(parent_frame)
-        output_listbox_frame.pack(fill=tk.BOTH, expand=True, padx=0, pady=0)
-
-        self.output_file_listbox = tk.Listbox(output_listbox_frame)
-
-        # Vertikale Scrollbar
-        output_file_v_scrollbar = ttk.Scrollbar(
-            output_listbox_frame, orient="vertical", command=self.output_file_listbox.yview
+        self.output_file_listbox = self.__build_listbox(
+            parent_frame, lambda event: self._on_file_selection(event, self.gpx_output)
         )
-        self.output_file_listbox.configure(yscrollcommand=output_file_v_scrollbar.set)
-
-        # Horizontale Scrollbar
-        output_file_h_scrollbar = ttk.Scrollbar(
-            output_listbox_frame, orient="horizontal", command=self.output_file_listbox.xview
-        )
-        self.output_file_listbox.configure(xscrollcommand=output_file_h_scrollbar.set)
-
-        # Grid layout für Listbox und Scrollbars
-        self.output_file_listbox.grid(row=0, column=0, sticky="nsew")
-        output_file_v_scrollbar.grid(row=0, column=1, sticky="ns")
-        output_file_h_scrollbar.grid(row=1, column=0, sticky="ew")
-
-        output_listbox_frame.grid_rowconfigure(0, weight=1)
-        output_listbox_frame.grid_columnconfigure(0, weight=1)
-
         self.output_file_listbox.bind(
             "<Double-Button-1>", lambda event: self._open_selected_file(event, self.gpx_output)
-        )
-        self.output_file_listbox.bind(
-            "<<ListboxSelect>>", lambda event: self._on_file_selection(event, self.gpx_output)
         )
 
     def _build_button_panel(self, parent_frame):
@@ -401,16 +356,58 @@ class MainGui:
         self.canvas_widget.config(cursor="hand2")  # Change cursor when hovering over plot
 
     def _build_tracks_listbox(self, parent_frame):
-        """Build the tracks listbox (placeholder for future implementation)."""
-        # Placeholder for tracks listbox - will be implemented later
-        placeholder_label = ttk.Label(parent_frame, text="Tracks will be displayed here")
-        placeholder_label.pack(expand=True)
+        """Build the tracks listbox"""
+        self.tracks_listbox = self.__build_listbox(
+            parent_frame, lambda event: self._on_track_selection(event)
+        )
+
+    @staticmethod
+    def __build_listbox(parent_frame, evt) -> tk.Listbox:
+        tracks_listbox_frame = ttk.Frame(parent_frame)
+        tracks_listbox_frame.pack(fill=tk.BOTH, expand=True, padx=0, pady=0)
+        _listbox = tk.Listbox(tracks_listbox_frame, selectmode=tk.EXTENDED)
+
+        # Vertikale Scrollbar
+        input_file_v_scrollbar = ttk.Scrollbar(
+            tracks_listbox_frame, orient="vertical", command=_listbox.yview
+        )
+        _listbox.configure(yscrollcommand=input_file_v_scrollbar.set)
+
+        # Horizontale Scrollbar
+        input_file_h_scrollbar = ttk.Scrollbar(
+            tracks_listbox_frame, orient="horizontal", command=_listbox.xview
+        )
+        _listbox.configure(xscrollcommand=input_file_h_scrollbar.set)
+
+        # Grid layout für Listbox und Scrollbars
+        _listbox.grid(row=0, column=0, sticky="nsew")
+        input_file_v_scrollbar.grid(row=0, column=1, sticky="ns")
+        input_file_h_scrollbar.grid(row=1, column=0, sticky="ew")
+
+        tracks_listbox_frame.grid_rowconfigure(0, weight=1)
+        tracks_listbox_frame.grid_columnconfigure(0, weight=1)
+
+        _listbox.bind("<Button-1>", evt)
+        return _listbox
 
     def _build_profile_plot(self, parent_frame):
-        """Build the profile plot (placeholder for future implementation)."""
-        # Placeholder for profile plot - will be implemented later
-        placeholder_label = ttk.Label(parent_frame, text="Profile plot will be displayed here")
-        placeholder_label.pack(expand=True)
+        """Build the matplotlib plot display."""
+        parent_frame.grid_rowconfigure(0, weight=1)  # Canvas
+        parent_frame.grid_rowconfigure(1, weight=0)  # Toolbar
+        parent_frame.grid_columnconfigure(0, weight=1)
+
+        # Setup Matplotlib figure and canvas
+        self.fig1, self.ax1 = plt.subplots(figsize=(8, 4))  # Kleinere initiale Höhe
+        self.fig1.set_facecolor("#EEEEEE")  # Light grey background for the figure
+        self.canvas1 = FigureCanvasTkAgg(self.fig1, master=parent_frame)
+        self.canvas_widget1 = self.canvas.get_tk_widget()
+        self.canvas_widget1.grid(row=0, column=0, sticky="nsew")
+
+        # Add Matplotlib toolbar
+        self.toolbar1 = NavigationToolbar2Tk(self.canvas1, parent_frame, pack_toolbar=False)
+        self.toolbar1.update()
+        self.toolbar1.grid(row=1, column=0, sticky="ew")  # Position toolbar below canvas
+        self.canvas_widget1.config(cursor="hand2")  # Change cursor when hovering over plot
 
     def _on_log_window_close(self):
         """Callback function when log window is closed."""
@@ -538,11 +535,11 @@ class MainGui:
     def _clear_files(self):
         """Clear the input file list."""
         self.gpx_input.clear()
-        self.input_file_listbox.delete(0, tk.END)
-        self.logger.info("Input file list cleared")
         self.gpx_output.clear()
         self.output_file_listbox.delete(0, tk.END)
-        self.logger.info("Generated file list cleared")
+        self.input_file_listbox.delete(0, tk.END)
+        self.tracks_listbox.delete(0, tk.END)
+        self.logger.info("All file file lists cleared")
         self._clear_metadata_and_plot()  # Clear plot and metadata when output files are cleared
 
     def _remove_selected_input_files(self):
@@ -575,6 +572,28 @@ class MainGui:
         """Handle selection change in file listboxes to update metadata/plot."""
         widget = event.widget
         self._update_selected_file_display(widget, gpx_dict_source)
+
+    def _on_track_selection(self, event):
+        """Handle selection change in file listboxes to update metadata/plot."""
+        listbox_widget = event.widget
+        self._update_profile(listbox_widget)
+
+    def _update_profile(self, listbox_widget):
+        selected_indices = listbox_widget.curselection()
+        if selected_indices:
+            index = selected_indices[0]
+            track_name = listbox_widget.get(index)
+            # Plotting
+            self.gpx_map_plotter.plot_track_profile(self.selected_gpx, track_name)
+
+    def _update_tracks(self, gpx_obj: GPX):
+        """Separate logic to update display based on listbox selection."""
+        self.tracks_listbox.delete(0, tk.END)
+        self.selected_gpx = gpx_obj
+        for i, track in enumerate(gpx_obj.tracks):
+            track_name = track.name or f"Track {i + 1}"
+            distance_2d = track.length_2d()
+            self.tracks_listbox.insert(tk.END, f"{track_name} ({distance_2d / 1000:.1f} km)")
 
     def _update_selected_file_display(self, listbox_widget, gpx_dict_source: dict[Path, GPX]):
         """Separate logic to update display based on listbox selection."""
@@ -739,7 +758,7 @@ class MainGui:
                 self.output_file_listbox.insert(tk.END, f"{path.name} ({path})")
 
             self.output_file_listbox.selection_clear(0, tk.END)
-            self.output_file_listbox.selection_set(len(self.gpx_output) - 1)
+            self.output_file_listbox.selection_set(tk.END)
 
             # Direkt die extrahierte Logik aufrufen
             self._update_selected_file_display(self.output_file_listbox, self.gpx_output)
@@ -771,10 +790,11 @@ class MainGui:
         self._display_gpx_metadata(gpx_obj, file_path.name)
 
         # Plotting
-        self.gpx_plotter.plot_gpx_data(gpx_obj)
+        self.gpx_map_plotter.plot_gpx_map(gpx_obj)
 
     def _display_gpx_metadata(self, gpx_obj: GPX, file_name: str):
         """Display metadata for the given GPX object."""
+        self._update_tracks(gpx_obj)
         self.metadata_text.config(state=tk.NORMAL)
         self.metadata_text.delete(1.0, tk.END)  # Clear previous content
 
@@ -793,7 +813,7 @@ class MainGui:
         for i, track in enumerate(gpx_obj.tracks):
             track_name = track.name or f"Track {i + 1}"
             distance_2d = track.length_2d()
-            self.metadata_text.insert(tk.END, f"  - {track_name}: {distance_2d / 1000:.2f} km")
+            self.metadata_text.insert(tk.END, f"  - {track_name}: {distance_2d / 1000:.1f} km")
 
             uphill, downhill = None, None
             try:
@@ -814,7 +834,7 @@ class MainGui:
                 )
 
             if uphill is not None and downhill is not None:
-                self.metadata_text.insert(tk.END, f" (↑{uphill:.1f}m ↓{downhill:.1f}m)\n")
+                self.metadata_text.insert(tk.END, f" (↑{uphill:.0f}m ↓{downhill:.0f}m)\n")
             else:
                 self.metadata_text.insert(tk.END, "\n")
 
@@ -869,7 +889,8 @@ class MainGui:
         self.metadata_text.config(state=tk.NORMAL)
         self.metadata_text.delete(1.0, tk.END)
         self.metadata_text.config(state=tk.DISABLED)
-        self.gpx_plotter.clear_plot()
+        self.gpx_map_plotter.clear_plot()
+        self.gpx_profile_plotter.clear_plot()
         self._last_selected_file_path = None
 
     def _open_settings(self):
