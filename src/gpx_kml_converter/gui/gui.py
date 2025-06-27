@@ -573,7 +573,6 @@ class MainGui:
 
     def _on_file_selection(self, event, gpx_dict_source: dict[Path, GPX]):
         """Handle selection change in file listboxes to update metadata/plot."""
-        selected_indices = event.widget.curselection()
         widget = event.widget
         self._update_selected_file_display(widget, gpx_dict_source)
 

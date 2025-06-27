@@ -383,6 +383,35 @@ class BaseGPXProcessor:
             self.logger.debug(f"Full traceback:\n{traceback.format_exc()}")
             return track_points  # Return original points if optimization fails
 
+    def _optimize_waypoint(self, waypoint: GPXWaypoint) -> GPXWaypoint:
+        """Optimize waypoint with error handling."""
+        try:
+            # Round coordinates and elevation
+            if hasattr(waypoint, "latitude") and waypoint.latitude is not None:
+                waypoint.latitude = round(waypoint.latitude, 5)
+            if hasattr(waypoint, "longitude") and waypoint.longitude is not None:
+                waypoint.longitude = round(waypoint.longitude, 5)
+
+            waypoint.elevation = self._get_adjusted_elevation(waypoint)
+
+            # Clean metadata
+            waypoint.time = None
+            waypoint.extensions = None
+            if hasattr(waypoint, "symbol"):
+                waypoint.symbol = None
+            if hasattr(waypoint, "type"):
+                waypoint.type = None
+            waypoint.comment = None
+            waypoint.description = None
+            waypoint.source = None
+            waypoint.link = None
+            waypoint.link_text = None
+            waypoint.link_type = None
+            return waypoint
+        except Exception as e:
+            self.logger.warning(f"Error optimizing waypoint: {e}")
+            return waypoint
+
     def _save_gpx_file(
         self, gpx: GPX, output_path: Path, original_file_path: Path | None = None
     ) -> Path:
@@ -438,7 +467,7 @@ class BaseGPXProcessor:
 
                 # Process waypoints (just add them, they are typically not "optimized" by distance)
                 for waypoint in gpx_obj.waypoints:
-                    optimized_gpx.waypoints.append(waypoint)
+                    optimized_gpx.waypoints.append(self._optimize_waypoint(waypoint))
 
                 # Save the optimized GPX
                 output_filename = f"optimized_{gpx_obj.name or f'file_{idx + 1}'}.gpx"
@@ -485,7 +514,7 @@ class BaseGPXProcessor:
                     total_routes += 1
                 # Merge waypoints
                 for waypoint in gpx_obj.waypoints:
-                    merged_gpx.waypoints.append(waypoint)
+                    merged_gpx.waypoints.append(self._optimize_waypoint(waypoint))
                     total_waypoints += 1
                 self.logger.debug(
                     f"Merged contents of GPX object {gpx_obj.name or f'file_{idx + 1}'}"
@@ -557,12 +586,12 @@ class BaseGPXProcessor:
                             f"Start of route {route.name or f'Route_{route_idx + 1}'}"
                         )
                         waypoint.type = "Route Start"
-                        poi_gpx.waypoints.append(waypoint)
+                        poi_gpx.waypoints.append(self._optimize_waypoint(waypoint))
                         poi_counter += 1
 
                 # Add existing waypoints directly
                 for waypoint in gpx_obj.waypoints:
-                    poi_gpx.waypoints.append(waypoint)
+                    poi_gpx.waypoints.append(self._optimize_waypoint(waypoint))
                     poi_counter += 1
 
             except Exception as e:
