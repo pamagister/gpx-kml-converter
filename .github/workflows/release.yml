@@ -39,7 +39,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v6
       with:
         # Use a specific Python version, e.g., 3.11, consistent with your build
         python-version: '3.11'
