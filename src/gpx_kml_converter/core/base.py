@@ -178,18 +178,22 @@ class GeoFileManager:
 class BaseGPXProcessor:
     def __init__(
         self,
-        input_gpx_list: list[GPX],
+        input_: list[GPX] | str,
         output=None,
         min_dist=10,
         date_format="%Y-%m-%d",
         elevation=True,
         logger=None,
     ):
-        if not isinstance(input_gpx_list, list) or not all(
-            isinstance(g, GPX) for g in input_gpx_list
-        ):
-            raise ValueError("input_gpx_list must be a list of gpxpy.gpx.GPX objects.")
-        self.input_gpx_list = input_gpx_list
+        # ensure that input is converted into a list[Path]
+        if isinstance(input_, str):
+            self.input = [Path(input_)]
+        elif isinstance(input_, Path):
+            self.input = [input_]
+        elif isinstance(input_, list):
+            self.input = [Path(p) for p in input_ if isinstance(p, str | Path)]
+        else:
+            raise ValueError("Input must be a string, Path, or list of strings/Paths.")
 
         self.output = output
         self.min_dist = min_dist
@@ -435,9 +439,9 @@ class BaseGPXProcessor:
         """Shrink the size of all given gpx/kml files by optimizing track points."""
         generated_gpx_map = {}
         output_folder = self._get_output_folder()
-        self.logger.info(f"Processing {len(self.input_gpx_list)} GPX objects for compression...")
+        self.logger.info(f"Processing {len(self.input)} GPX objects for compression...")
 
-        for idx, gpx_obj in enumerate(self.input_gpx_list):
+        for idx, gpx_obj in enumerate(self.input):
             try:
                 optimized_gpx = gpxpy.gpx.GPX()
                 optimized_gpx.creator = gpx_obj.creator
@@ -494,7 +498,7 @@ class BaseGPXProcessor:
 
     def merge_files(self) -> dict[Path, GPX]:
         """Merge all given GPX objects into a single GPX file."""
-        if not self.input_gpx_list:
+        if not self.input:
             self.logger.warning("No GPX objects provided for merging.")
             return {}
 
@@ -506,7 +510,7 @@ class BaseGPXProcessor:
         total_routes = 0
         total_waypoints = 0
 
-        for idx, gpx_obj in enumerate(self.input_gpx_list):
+        for idx, gpx_obj in enumerate(self.input):
             try:
                 # Merge tracks
                 # Process tracks
@@ -554,7 +558,7 @@ class BaseGPXProcessor:
 
     def extract_pois(self) -> dict[Path, GPX]:
         """Extract POIs (Points of Interest) from tracks and routes into a new GPX file."""
-        if not self.input_gpx_list:
+        if not self.input:
             self.logger.warning("No GPX objects provided for POI extraction.")
             return {}
 
@@ -563,7 +567,7 @@ class BaseGPXProcessor:
         poi_gpx.name = "Extracted POIs"
         poi_counter = 1
 
-        for idx, gpx_obj in enumerate(self.input_gpx_list):
+        for idx, gpx_obj in enumerate(self.input):
             try:
                 # Extract POIs from tracks
                 for track_idx, track in enumerate(gpx_obj.tracks):

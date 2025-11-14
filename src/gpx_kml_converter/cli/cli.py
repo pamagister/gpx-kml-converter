@@ -12,30 +12,33 @@ from gpx_kml_converter.core.base import BaseGPXProcessor
 from gpx_kml_converter.core.logging import initialize_logging
 
 
-def validate_config(config: ProjectConfigManager, logger) -> bool:
+def validate_config(config: ProjectConfigManager) -> bool:
     """Validate the configuration parameters.
 
     Args:
         config: Configuration manager instance
-        logger: Logger instance for error reporting
 
     Returns:
         True if configuration is valid, False otherwise
     """
+    # Initialize logging system
+    logger_manager = initialize_logging(config)
+    logger = logger_manager.get_logger("cli")
+
     # Get CLI category and check required parameters
-    cli_category = config.get_category("cli")
+    cli_category = config.cli
     if not cli_category:
         logger.error("No CLI configuration found")
         return False
 
     # Check if input parameter exists and has a value
     input_param = getattr(cli_category, "input", None)
-    if not input_param or not input_param.default:
+    if not input_param or not input_param.value:
         logger.error("Input is required")
         return False
 
     # Check if input file exists
-    input_path = Path(input_param.default)
+    input_path = Path(input_param.value)
     if not input_path.exists():
         logger.error(f"File not found: {input_path}")
         return False
@@ -55,7 +58,7 @@ def run_main_processing(config: ProjectConfigManager) -> int:
     """
     # Initialize logging system
     logger_manager = initialize_logging(config)
-    logger = logger_manager.get_logger("python_template_project.cli")
+    logger = logger_manager.get_logger("cli")
 
     try:
         # Log startup information
@@ -63,20 +66,20 @@ def run_main_processing(config: ProjectConfigManager) -> int:
         logger_manager.log_config_summary()
 
         # Validate configuration
-        if not validate_config(config, logger):
+        if not validate_config(config):
             logger.error("Configuration validation failed")
             return 1
 
         # Get CLI parameters
-        cli_category = config.get_category("cli")
-        input_file = cli_category.input.default
-        output_file = cli_category.output.default
-        min_dist = cli_category.min_dist.default
-        extract_waypoints = cli_category.extract_waypoints.default
+        cli_category = config.cli
+        input_file = cli_category.input.value
+        output_file = cli_category.output.value
+        min_dist = cli_category.min_dist.value
+        extract_waypoints = cli_category.extract_waypoints.value
 
         # Get app parameters
-        app_category = config.get_category("app")
-        date_format = app_category.date_format.default if app_category else "%Y-%m-%d"
+        app_category = config.app
+        date_format = app_category.date_format.value if app_category else "%Y-%m-%d"
 
         logger.info(f"Processing input: {input_file}")
 

@@ -39,7 +39,7 @@ class TestGPXProcessor(unittest.TestCase):
             gpx_objects.get(self.test_gpx_file),
         ]
         self.processor = BaseGPXProcessor(
-            input_gpx_list=self.gpx_object,
+            input_=self.gpx_object,
             output=str(self.output_dir),
             logger=self.logger,
         )

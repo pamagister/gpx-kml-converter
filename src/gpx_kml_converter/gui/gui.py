@@ -469,9 +469,7 @@ class MainGui:
         ttk.Button(log_controls, text="Clear Log", command=self._clear_log).pack(side=tk.LEFT)
 
         ttk.Label(log_controls, text="Log Level:").pack(side=tk.LEFT, padx=0, pady=0)
-        self.log_level_var = tk.StringVar(
-            value=self.config_manager.get_category("app").log_level.default
-        )
+        self.log_level_var = tk.StringVar(value=self.config_manager.app.log_level.value)
         log_level_combo = ttk.Combobox(
             log_controls,
             textvariable=self.log_level_var,
@@ -721,11 +719,11 @@ class MainGui:
         def processing_thread():
             try:
                 processor = BaseGPXProcessor(
-                    input_gpx_list=selected_gpx_objects,
-                    output=self.config_manager.get_category("cli").output.default,
-                    min_dist=self.config_manager.get_category("cli").min_dist.default,
-                    date_format=self.config_manager.get_category("app").date_format.default,
-                    elevation=self.config_manager.get_category("cli").elevation.default,
+                    input_=selected_gpx_objects,
+                    output=self.config_manager.cli.output.value,
+                    min_dist=self.config_manager.cli.min_dist.value,
+                    date_format=self.config_manager.app.date_format.value,
+                    elevation=self.config_manager.cli.elevation.value,
                     logger=self.logger,
                 )
 
@@ -908,7 +906,7 @@ class MainGui:
         if dialog.result == "ok":
             self.logger.info("Settings updated successfully")
             # Update log level selector if it changed
-            self.log_level_var.set(self.config_manager.get_category("app").log_level.default)
+            self.log_level_var.set(self.config_manager.app.log_level.value)
 
     def _open_help(self):
         """Open the help documentation."""

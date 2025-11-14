@@ -1,9 +1,9 @@
 # Command Line Interface
 
-Command line options for gpx_kml_converter.cli
+Command line options for gpx_kml_converter
 
 ```bash
-python -m gpx_kml_converter.cli [OPTIONS] input
+python -m gpx_kml_converter [OPTIONS] input
 ```
 
 ## Options
@@ -23,37 +23,37 @@ python -m gpx_kml_converter.cli [OPTIONS] input
 ### 1. Basic usage
 
 ```bash
-python -m gpx_kml_converter.cli input
+python -m gpx_kml_converter input
 ```
 
 ### 2. With verbose logging
 
 ```bash
-python -m gpx_kml_converter.cli -v input
-python -m gpx_kml_converter.cli --verbose input
+python -m gpx_kml_converter -v input
+python -m gpx_kml_converter --verbose input
 ```
 
 ### 3. With quiet mode
 
 ```bash
-python -m gpx_kml_converter.cli -q input
-python -m gpx_kml_converter.cli --quiet input
+python -m gpx_kml_converter -q input
+python -m gpx_kml_converter --quiet input
 ```
 
 ### 4. With min_dist parameter
 
 ```bash
-python -m gpx_kml_converter.cli --min_dist 20 input
+python -m gpx_kml_converter --min_dist 20 input
 ```
 
 ### 5. With extract_waypoints parameter
 
 ```bash
-python -m gpx_kml_converter.cli --extract_waypoints True input
+python -m gpx_kml_converter --extract_waypoints True input
 ```
 
 ### 6. With elevation parameter
 
 ```bash
-python -m gpx_kml_converter.cli --elevation True input
+python -m gpx_kml_converter --elevation True input
 ```
