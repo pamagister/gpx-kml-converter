@@ -178,22 +178,20 @@ class GeoFileManager:
 class BaseGPXProcessor:
     def __init__(
         self,
-        input_: list[GPX] | str,
+        input_: list[GPX] | str | Path,
         output=None,
         min_dist=10,
         date_format="%Y-%m-%d",
         elevation=True,
         logger=None,
     ):
-        # ensure that input is converted into a list[Path]
-        if isinstance(input_, str):
-            self.input = [Path(input_)]
-        elif isinstance(input_, Path):
-            self.input = [input_]
-        elif isinstance(input_, list):
-            self.input = [Path(p) for p in input_ if isinstance(p, str | Path)]
+        if isinstance(input_, str) | isinstance(input_, Path):
+            loaded_gpx_map = GeoFileManager(logger=logger).load_files([Path(input_)])
+            self.input = loaded_gpx_map.values()
+        elif isinstance(input_, list) and all(isinstance(g, GPX) for g in input_):
+            self.input = input_
         else:
-            raise ValueError("Input must be a string, Path, or list of strings/Paths.")
+            raise ValueError("input_gpx_list must be a list of gpxpy.gpx.GPX objects.")
 
         self.output = output
         self.min_dist = min_dist

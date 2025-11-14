@@ -94,6 +94,7 @@ def run_main_processing(config: ProjectConfigManager) -> int:
         )
 
         logger.info("Starting conversion process")
+        logger.info(f"Original file size: {Path(input_file).stat().st_size / 1024:.2f} KB")
 
         # Run the processing (adjust method name based on your actual implementation)
         result_files = processor.compress_files()
