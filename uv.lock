@@ -1,5 +1,5 @@
 version = 1
-revision = 2
+revision = 3
 requires-python = ">=3.10, <3.12"
 resolution-markers = [
     "python_full_version >= '3.11'",
@@ -148,15 +148,15 @@ wheels = [
 
 [[package]]
 name = "config-cli-gui"
-version = "0.1.4"
+version = "0.2.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "pydantic" },
     { name = "pyyaml" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/3b/40/a862053e1b21c1d4f3c223ae268e63edbce6a52169d32c42f2dddc4fc504/config_cli_gui-0.1.4.tar.gz", hash = "sha256:c29944bdbfab4c6fa1f7b3a307c9888ac45da8d8b6d32dbe0d1662edf318ae5d", size = 109230, upload-time = "2025-06-23T22:21:45.066Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/66/45/3e723a140449dc05de9587ed335a93a5def3540de51822da5b977c5badc8/config_cli_gui-0.2.2.tar.gz", hash = "sha256:de8c4af7fad13e85ec4ace0665212a72dbe4639d1be0b7b3c6155a631673ae74", size = 134050, upload-time = "2025-11-14T14:51:54.384Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/94/e9/c04146655bb16930d2768684b1cbc88244fde6724297cf2c13727ee68e14/config_cli_gui-0.1.4-py3-none-any.whl", hash = "sha256:dfbe6d7416da29badc195ddd81b9ff57ce2a08929f7ccef0c7b3aee16a4b9d0b", size = 17847, upload-time = "2025-06-23T22:21:44.139Z" },
+    { url = "https://files.pythonhosted.org/packages/8b/91/8a28d11d08d6c0e2022f4a77fec0d45e9af5c7aae2f80db4c8527fec7a73/config_cli_gui-0.2.2-py3-none-any.whl", hash = "sha256:198ca3874d772871cc6275af1d6d5e0794df618babd62b9e0911f8fd189dd196", size = 17213, upload-time = "2025-11-14T14:51:53.129Z" },
 ]
 
 [[package]]
@@ -401,7 +401,7 @@ docs = [
 [package.metadata]
 requires-dist = [
     { name = "black", marker = "extra == 'dev'", specifier = ">=25.1.0" },
-    { name = "config-cli-gui", specifier = ">=0.1.4" },
+    { name = "config-cli-gui", specifier = ">=0.2.2" },
     { name = "coverage", marker = "extra == 'dev'", specifier = ">=7.8.2" },
     { name = "fastkml", specifier = ">=1.1.0" },
     { name = "flake8", marker = "extra == 'dev'", specifier = ">=7.2.0" },
