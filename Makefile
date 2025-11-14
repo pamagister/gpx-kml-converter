@@ -119,6 +119,7 @@ virtualenv:       ## Create a virtual environment.
 
 .PHONY: release
 release:          ## Create a new tag for release.
+	$(MAKE) precommit
 	@echo "WARNING: This operation will create a version tag and push to GitHub"
 
 	# Get the latest Git tag if it exists, otherwise default to 0.0.0 for calculations
