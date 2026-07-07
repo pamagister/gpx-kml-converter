@@ -4,6 +4,12 @@ Changelog
 
 (unreleased)
 ------------
+- Fix pylint: remove import. [Paul Magister]
+
+
+1.0.6 (2026-07-07)
+------------------
+- Docs: Update HISTORY.md for release 1.0.6. [Paul Magister]
 - Update config-cli-gui: dark mode and updated gui-config concept. [Paul
   Magister]
 - Update config-cli-gui: dark mode and updated gui-config concept. [Paul
