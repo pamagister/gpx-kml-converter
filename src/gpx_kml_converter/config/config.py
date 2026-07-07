@@ -58,63 +58,6 @@ class CliConfig(ConfigCategory):
     )
 
 
-class AppConfig(ConfigCategory):
-    """Application-specific configuration parameters."""
-
-    def get_category_name(self) -> str:
-        return "app"
-
-    date_format: ConfigParameter = ConfigParameter(
-        name="date_format",
-        value="%Y-%m-%d",
-        help="Date format to use",
-    )
-
-    log_level: ConfigParameter = ConfigParameter(
-        name="log_level",
-        value="INFO",
-        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
-        help="Logging level for the application",
-    )
-
-    log_file_max_size: ConfigParameter = ConfigParameter(
-        name="log_file_max_size",
-        value=10,
-        help="Maximum log file size in MB before rotation",
-    )
-
-    log_backup_count: ConfigParameter = ConfigParameter(
-        name="log_backup_count",
-        value=5,
-        help="Number of backup log files to keep",
-    )
-
-    log_format: ConfigParameter = ConfigParameter(
-        name="log_format",
-        value="detailed",
-        choices=["simple", "detailed", "json"],
-        help="Log message format style",
-    )
-
-    max_workers: ConfigParameter = ConfigParameter(
-        name="max_workers",
-        value=4,
-        help="Maximum number of worker threads",
-    )
-
-    enable_file_logging: ConfigParameter = ConfigParameter(
-        name="enable_file_logging",
-        value=True,
-        help="Enable logging to file",
-    )
-
-    enable_console_logging: ConfigParameter = ConfigParameter(
-        name="enable_console_logging",
-        value=True,
-        help="Enable logging to console",
-    )
-
-
 class GuiConfig(ConfigCategory):
     """GUI-specific configuration parameters."""
 
@@ -159,17 +102,25 @@ class GuiConfig(ConfigCategory):
     )
 
 
-class ProjectConfigManager(ConfigManager):  # Inherit from ConfigManager
+class ConfigParameterManager(ConfigManager):  # Inherit from ConfigManager
     """Main configuration manager that handles all parameter categories."""
 
     cli: CliConfig
-    app: AppConfig
     gui: GuiConfig
 
     def __init__(self, config_file: str | None = None, **kwargs):
         """Initialize the configuration manager with all parameter categories."""
-        categories = (CliConfig(), AppConfig(), GuiConfig())
+        categories = (CliConfig(), GuiConfig())
         super().__init__(categories, config_file, **kwargs)
+
+    @staticmethod
+    def get_app_name() -> str:
+        """Return the application identifier for this example project.
+
+        This overrides the library default so that example files use
+        "example-app" as their persistence directory/name.
+        """
+        return "gpx-kml-converter"
 
 
 def main():
@@ -178,7 +129,7 @@ def main():
     default_cli_doc: str = "docs/usage/cli.md"
     default_config_doc: str = "docs/usage/config.md"
     app_name = "gpx_kml_converter"
-    _config = ProjectConfigManager()
+    _config = ConfigParameterManager()
     doc_gen = DocumentationGenerator(_config)
     doc_gen.generate_default_config_file(output_file=default_config)
     print(f"Generated: {default_config}")

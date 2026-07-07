@@ -24,8 +24,12 @@ import matplotlib.pyplot as plt
 from config_cli_gui.gui import SettingsDialogGenerator, ToolTip
 from gpxpy.gpx import GPX
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
+from tkinter import filedialog, font, messagebox, ttk
 
-from gpx_kml_converter.config.config import ProjectConfigManager
+import ttkbootstrap
+
+from config_cli_gui.persistence import read_last_used_config
+from gpx_kml_converter.config.config import ConfigParameterManager
 from gpx_kml_converter.core.base import BaseGPXProcessor, GeoFileManager  # Import GeoFileManager
 from gpx_kml_converter.core.gpx_plotter import GPXPlotter
 from gpx_kml_converter.core.logging import (
@@ -123,7 +127,7 @@ class MainGui:
         self.root.geometry("1400x800")  # Increased width and height for new layout
 
         # Initialize configuration
-        self.config_manager = ProjectConfigManager("config.yaml")
+        self.config_manager = ConfigParameterManager("config.yaml")
 
         # Initialize logging system
         self.logger_manager = initialize_logging(self.config_manager)
@@ -944,7 +948,23 @@ class MainGui:
 
 def main():
     """Main entry point for the GUI application."""
-    root = tk.Tk()
+
+    # Try to restore the last used configuration file so the GUI can start
+    # with the user's preferred theme and settings.
+    last = read_last_used_config(ConfigParameterManager.get_app_name())
+    if last and Path(last).exists():
+        _config = ConfigParameterManager(last)
+    else:
+        _config = ConfigParameterManager()
+
+    theme_choice = _config.app.theme.value
+
+    root: ttkbootstrap.Window = ttkbootstrap.Window(themename=theme_choice)
+
+    font.nametofont("TkDefaultFont").configure(size=11)
+    font.nametofont("TkTextFont").configure(size=11)
+    font.nametofont("TkMenuFont").configure(size=11)
+    font.nametofont("TkHeadingFont").configure(size=11)
     try:
         MainGui(root)
         root.mainloop()

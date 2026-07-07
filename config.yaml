@@ -1,41 +1,36 @@
 app:
-  # Date format to use | type=str, default=%Y-%m-%d
+  # Date format to use | type=str
   date_format: '%Y-%m-%d'
-  # Enable logging to console | type=bool, default=True
-  enable_console_logging: true
-  # Enable logging to file | type=bool, default=True
-  enable_file_logging: true
-  # Number of backup log files to keep | type=int, default=5
-  log_backup_count: 5
-  # Maximum log file size in MB before rotation | type=int, default=10
-  log_file_max_size: 10
-  # Log message format style | type=str, default=detailed
-  log_format: detailed
-  # Logging level for the application | type=str, default=INFO
+  # Logging level for the application | type=str | choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
   log_level: INFO
-  # Maximum number of worker threads | type=int, default=4
-  max_workers: 4
+  # Maximum log file size in MB before rotation | type=int
+  log_file_max_size: 2
+  # Enable logging to file | type=bool | choices=[True, False]
+  enable_file_logging: true
+  # Enable logging to console | type=bool | choices=[True, False]
+  enable_console_logging: true
+  theme: darkly
 cli:
-  # Include elevation data in waypoints | type=bool, default=True [CLI]
-  elevation: true
-  # Extract starting points of each track as waypoint | type=bool, default=True [CLI]
-  extract_waypoints: true
-  # Path to input (file or folder) | type=str, default= [CLI]
+  # Path to input (file or folder) | type=str | [CLI]
   input: ''
-  # Maximum distance between two waypoints | type=int, default=20 [CLI]
-  min_dist: 20
-  # Path to output destination | type=str, default= [CLI]
+  # Path to output destination | type=str | [CLI]
   output: ''
+  # Maximum distance between two waypoints | type=int | [CLI]
+  min_dist: 20
+  # Extract starting points of each track as waypoint | type=bool | [CLI] | choices=[True, False]
+  extract_waypoints: true
+  # Include elevation data in waypoints | type=bool | [CLI] | choices=[True, False]
+  elevation: true
 gui:
-  # Automatically scroll to newest log entries | type=bool, default=True
-  auto_scroll_log: true
-  # Height of the log window in pixels | type=int, default=200
-  log_window_height: 200
-  # Maximum number of log lines to keep in GUI | type=int, default=1000
-  max_log_lines: 1000
-  # GUI theme setting | type=str, default=light
+  # GUI theme setting | type=str | choices=['light', 'dark', 'auto']
   theme: light
-  # Default window height | type=int, default=600
-  window_height: 600
-  # Default window width | type=int, default=800
+  # Default window width | type=int
   window_width: 800
+  # Default window height | type=int
+  window_height: 600
+  # Height of the log window in pixels | type=int
+  log_window_height: 200
+  # Automatically scroll to newest log entries | type=bool | choices=[True, False]
+  auto_scroll_log: true
+  # Maximum number of log lines to keep in GUI | type=int
+  max_log_lines: 1000
