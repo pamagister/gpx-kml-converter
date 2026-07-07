@@ -55,37 +55,111 @@ test: lint        ## Run tests and generate coverage report.
 	uv run coverage xml
 	uv run coverage html
 
+# ==========================
+#   PROJECT SETTINGS
+# ==========================
+
+# Projektname
+NAME := gpx-kml-converter
+
+# Version automatisch aus git extrahieren
+VERSION := $(shell git describe --tags --abbrev=0 2>/dev/null || echo "0.0.0")
+
+# Release-Verzeichnis
+RELEASE_DIR := release
+DIST_DIR := dist
+
+# Gemeinsame PyInstaller-Optionen
+COMMON_PYI_OPTS = \
+	--add-data "config.yaml:." \
+    --hidden-import=PIL._tkinter_finder \
+    --hidden-import=PIL.ImageTk \
+    --collect-all=geopandas \
+    --collect-all=shapely \
+    --collect-all=pyogrio \
+    --collect-all=PIL \
+    --collect-submodules=PIL \
+	--exclude-module pkg_resources \
+    --exclude-module setuptools \
+
+# ==========================
+#   UTILS
+# ==========================
+
+.PHONY: prepare-release
+prepare-release:
+	rm -rf $(RELEASE_DIR)
+	mkdir -p $(RELEASE_DIR)
+	cp config.yaml $(RELEASE_DIR)/
+	cp anniversaries.ini $(RELEASE_DIR)/
+	cp locations_en.ini $(RELEASE_DIR)/
+	cp locations_de.ini $(RELEASE_DIR)/
+	cp README.md $(RELEASE_DIR)/
+	cp -R res $(RELEASE_DIR)/
+	cp -R docs $(RELEASE_DIR)/
+	cp -R images $(RELEASE_DIR)/
+
+
+# ==========================
+#   WINDOWS BUILD
+# ==========================
+
 .PHONY: build-win
-build-win:    ## Build the Windows executable.
-	echo "Building unified CLI/GUI application"
-	uv run pyinstaller --onefile src/main.py --name gpx-kml-converter --add-data "config.yaml;." --hidden-import gpx_kml_converter.cli.cli --hidden-import gpx_kml_converter.gui.gui
-	rm -rf release
-	mkdir release
-	cp dist/gpx-kml-converter.exe release
-	cp config.yaml release
-	cp README.md release
+build-win: clean
+	echo "Building Windows executable"
+	uv run pyinstaller --onefile src/main.py \
+		--name $(NAME) \
+		$(COMMON_PYI_OPTS)
+
+	$(MAKE) prepare-release
+	cp $(DIST_DIR)/$(NAME).exe $(RELEASE_DIR)/
+
+
+
+# ==========================
+#   MACOS BUILD
+# ==========================
 
 .PHONY: build-macos
-build-macos:    ## Build the macOS executable.
-	echo "Building unified CLI/GUI application as executable"
-	uv run pyinstaller --onefile src/main.py --name gpx-kml-converter --add-data "config.yaml:." --hidden-import gpx_kml_converter.cli.cli --hidden-import gpx_kml_converter.gui.gui
+build-macos:
+	echo "Building macOS CLI/GUI executable"
+	uv run pyinstaller --onefile src/main.py \
+		--name $(NAME) \
+		$(COMMON_PYI_OPTS)
 
-	echo "Building unified CLI/GUI application as .app bundle"
-	# --windowed is important to hide the console for GUI mode
-	# The name "TemplateApp" becomes the name of the .app
-	uv run pyinstaller --windowed --name "TemplateApp" src/main.py --add-data "config.yaml:." --hidden-import gpx_kml_converter.cli.cli --hidden-import gpx_kml_converter.gui.gui
+	echo "Building macOS .app bundle (GUI)"
+	uv run pyinstaller --windowed src/main.py \
+		--name "TemplateApp" \
+		$(COMMON_PYI_OPTS)
 
-	# Prepare ZIP file for release
-	rm -rf release
-	mkdir release
-	echo "Copy the CLI/GUI executable"
-	cp dist/gpx-kml-converter release/
-	echo "Copy the .app bundle (directory) recursively"
-	cp -R "dist/TemplateApp.app" release/
-	echo "Copy configuration and documentation"
-	cp config.yaml release/
-	cp README.md release/
-	echo "Create usage instructions"
+	$(MAKE) prepare-release
+	cp $(DIST_DIR)/$(NAME) $(RELEASE_DIR)/
+	cp -R $(DIST_DIR)/TemplateApp.app $(RELEASE_DIR)/
+
+
+
+# ==========================
+#   LINUX BUILD
+# ==========================
+
+.PHONY: build-linux
+build-linux: clean
+	echo "Building Linux executable"
+	uv run pyinstaller --onefile src/main.py \
+		--name $(NAME) \
+		$(COMMON_PYI_OPTS)
+
+	$(MAKE) prepare-release
+	cp $(DIST_DIR)/$(NAME) $(RELEASE_DIR)/
+
+
+# ==========================
+#   META TARGETS
+# ==========================
+
+.PHONY: build-all
+build-all: build-win build-macos build-linux
+
 
 .PHONY: watch
 watch:            ## Run tests on every change.
