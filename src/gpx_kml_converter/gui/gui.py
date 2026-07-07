@@ -15,20 +15,18 @@ import traceback
 import webbrowser
 from functools import partial
 from pathlib import Path
-from tkinter import filedialog, messagebox, ttk
+from tkinter import filedialog, font, messagebox, ttk
 
 import gpxpy  # Import gpxpy directly for metadata extraction
 
 # Matplotlib imports for plotting
 import matplotlib.pyplot as plt
+import ttkbootstrap
 from config_cli_gui.gui import SettingsDialogGenerator, ToolTip
+from config_cli_gui.persistence import read_last_used_config
 from gpxpy.gpx import GPX
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
-from tkinter import filedialog, font, messagebox, ttk
 
-import ttkbootstrap
-
-from config_cli_gui.persistence import read_last_used_config
 from gpx_kml_converter.config.config import ConfigParameterManager
 from gpx_kml_converter.core.base import BaseGPXProcessor, GeoFileManager  # Import GeoFileManager
 from gpx_kml_converter.core.gpx_plotter import GPXPlotter
