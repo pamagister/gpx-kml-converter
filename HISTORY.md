@@ -4,6 +4,13 @@ Changelog
 
 (unreleased)
 ------------
+- Improve install.m instructions. [Paul Magister]
+- Bump python to <3.14. [Paul Magister]
+
+
+1.0.7 (2026-07-07)
+------------------
+- Docs: Update HISTORY.md for release 1.0.7. [Paul Magister]
 - Fix pylint: remove import. [Paul Magister]
 
 
