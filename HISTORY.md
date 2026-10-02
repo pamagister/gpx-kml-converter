@@ -4,6 +4,14 @@ Changelog
 
 (unreleased)
 ------------
+- Use config-cli-gui in new version. [Paul Magister]
+- Implement douglas-peucker algorithm for track optimization improve
+  cli. [Paul Magister]
+
+
+1.0.8 (2026-10-02)
+------------------
+- Docs: Update HISTORY.md for release 1.0.8. [Paul Magister]
 - Improve install.m instructions. [Paul Magister]
 - Bump python to <3.14. [Paul Magister]
 
