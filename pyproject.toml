@@ -8,7 +8,7 @@ authors = [
 readme = "docs/index.md"
 requires-python = ">=3.11,<3.14"
 dependencies = [
-    "config-cli-gui>=0.3.7",
+    "config-cli-gui>=0.3.8",
     "fastkml>=1.1.0",
     "geopandas>=1.1.0",
     "gpxpy>=1.6.2",
