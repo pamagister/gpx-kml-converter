@@ -1,5 +1,7 @@
 import shutil
+import tempfile
 import unittest
+import zipfile
 from datetime import datetime
 from pathlib import Path
 
@@ -102,53 +104,50 @@ class TestGPXProcessor(unittest.TestCase):
         distance_same = self.processor._calculate_distance(point_same, point_same)
         self.assertAlmostEqual(distance_same, 0.0)
 
-    def test_optimize_track_points(self):
-        """
-        Test the _optimize_track_points private method.
-        """
-        # Create a list of dummy track points
+    def test_douglas_peucker_respects_tolerance_and_preserves_input(self):
         points = [
-            GPXTrackPoint(
-                latitude=50.00000, longitude=10.00000, elevation=100.0, time=datetime.now()
-            ),
-            GPXTrackPoint(
-                latitude=50.00001, longitude=10.00001, elevation=101.0, time=datetime.now()
-            ),  # < 10m from previous
-            GPXTrackPoint(
-                latitude=50.00002, longitude=10.00002, elevation=102.0, time=datetime.now()
-            ),  # < 10m from previous
-            GPXTrackPoint(
-                latitude=50.00010, longitude=10.00010, elevation=103.0, time=datetime.now()
-            ),  # < 10m from previous
-            GPXTrackPoint(
-                latitude=50.00020, longitude=10.00020, elevation=104.0, time=datetime.now()
-            ),  # > 10m from first
-            GPXTrackPoint(
-                latitude=50.00030, longitude=10.00030, elevation=105.0, time=datetime.now()
-            ),  # > 10m from second optimized
+            GPXTrackPoint(latitude=50.0, longitude=10.0, time=datetime.now()),
+            GPXTrackPoint(latitude=50.00015, longitude=10.0005, time=datetime.now()),
+            GPXTrackPoint(latitude=50.0, longitude=10.001, time=datetime.now()),
         ]
-        # Temporarily change min_dist for this specific test
-        original_min_dist = self.processor.min_dist
-        self.processor.min_dist = 20.0  # meters
+        self.processor.tolerance = 10
+        simplified = self.processor._douglas_peucker(points)
+        self.assertEqual(len(simplified), 3)
+        self.assertIsNot(simplified[0], points[0])
+        self.assertIsNotNone(points[0].time)
 
-        optimized_points = self.processor._optimize_track_points(points)
+        self.processor.tolerance = 20
+        simplified = self.processor._douglas_peucker(points)
+        self.assertEqual(len(simplified), 2)
+        self.assertEqual(simplified[0].latitude, points[0].latitude)
+        self.assertEqual(simplified[-1].longitude, points[-1].longitude)
 
-        # Expected: first point, then point at 50.00020/10.00020, then point at 50.00030/10.00030
-        # The number of points should be reduced
-        self.assertLess(len(optimized_points), len(points))
-        # Exact number of points depends on _calculate_distance, but given the test points
-        # and min_dist=10, it should typically keep 3 points (start, second point > 10m, and end)
-        self.assertEqual(len(optimized_points), 3)  # Placeholder: Expect 3 optimized points
+    def test_zero_tolerance_preserves_all_points(self):
+        points = [
+            GPXTrackPoint(latitude=50.0, longitude=10.0),
+            GPXTrackPoint(latitude=50.0001, longitude=10.0001),
+            GPXTrackPoint(latitude=50.0002, longitude=10.0002),
+        ]
+        self.processor.tolerance = 0
+        self.assertEqual(len(self.processor._douglas_peucker(points)), len(points))
 
-        # Check if time information is removed and coordinates are rounded
-        for point in optimized_points:
-            self.assertIsNone(point.time)
-            self.assertEqual(point.latitude, round(float(point.latitude), 5))
-            self.assertEqual(point.longitude, round(float(point.longitude), 5))
-            self.assertIsInstance(point.elevation, int)  # Should be adjusted elevation
+    def test_compress_files_writes_simplified_gpx(self):
+        self.processor.include_elevation = False
+        self.processor.tolerance = 10
 
-        # Restore original min_dist
-        self.processor.min_dist = original_min_dist
+        result = self.processor.compress_files()
+
+        self.assertEqual(len(result), 1)
+        output_path = next(iter(result))
+        self.assertTrue(output_path.exists())
+        optimized_gpx = gpxpy.parse(open(output_path, "r", encoding="utf-8"))
+        original_point_count = sum(
+            len(segment.points) for track in self.gpx_object[0].tracks for segment in track.segments
+        )
+        optimized_point_count = sum(
+            len(segment.points) for track in optimized_gpx.tracks for segment in track.segments
+        )
+        self.assertLess(optimized_point_count, original_point_count)
 
     def test_save_gpx_file(self):
         """
@@ -164,6 +163,18 @@ class TestGPXProcessor(unittest.TestCase):
         # Verify content by reloading
         reloaded_gpx = gpxpy.parse(open(output_path, "r", encoding="utf-8"))
         self.assertEqual(reloaded_gpx.name, "Test Save")
+
+    def test_load_files_keeps_same_named_files_from_separate_archives(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            archives = [root / "first.zip", root / "second.zip"]
+            for archive in archives:
+                with zipfile.ZipFile(archive, "w") as zip_file:
+                    zip_file.write(self.test_gpx_file, "tracks/shared.gpx")
+
+            loaded = self.geo_file_manager.load_files(archives)
+
+        self.assertEqual(len(loaded), 2)
 
 
 if __name__ == "__main__":

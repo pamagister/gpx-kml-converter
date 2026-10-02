@@ -31,7 +31,7 @@ gpx-kml-converter-gui
 Run CLI from command line
 
 ```bash
-gpx-kml-converter-cli --help
+gpx-kml-converter --help
 ```
 
 
@@ -87,7 +87,7 @@ The core strength of the application lies in its ability to handle GPX and KML f
 
 The underlying processing engine includes sophisticated optimization techniques:
 
-* **`min_dist` Parameter:** During compression and merging, the application uses a configurable minimum distance parameter (`min_dist`). Track points closer than this distance are removed, reducing file size without significant loss of detail. 🤏
+* **Douglas–Peucker Simplification:** Compression and merging simplify each track segment with a configurable tolerance in meters (10 m by default), preserving segment boundaries and endpoints while limiting the geometric deviation. 🤏
 
 * **Metadata Cleaning:** Irrelevant metadata (e.g., time, extensions, comments, descriptions, symbols) is stripped from points, tracks, and routes to further reduce file size and declutter the data. 🧼
 
@@ -103,7 +103,7 @@ The underlying processing engine includes sophisticated optimization techniques:
 
 * **Configurable Log Level:** Adjust the verbosity of the log output (DEBUG, INFO, WARNING, ERROR, CRITICAL) directly from the GUI, allowing you to control the level of detail displayed. 🎚️
 
-* **Settings Dialog:** Access a comprehensive settings dialog from the "Options -> Settings" menu. Here, you can configure various application parameters, including `min_dist`, date formats, and other internal settings. Changes made here are saved to `config.yaml` for persistence across sessions. 🔧💾
+* **Settings Dialog:** Access a comprehensive settings dialog from the "Options -> Settings" menu. Here, you can configure various application parameters, including the simplification tolerance, date formats, and other internal settings. Changes made here are saved to `config.yaml` for persistence across sessions. 🔧💾
 
 
 ## 4. Usage ▶️
@@ -113,7 +113,7 @@ To run the GUI application, execute the following command in your project's root
 ### Run with CLI from source
 
 ```bash
-python -m gpx_kml_converter.cli [OPTIONS] path/to/file
+python -m gpx_kml_converter [OPTIONS] path/to/file.gpx path/to/file.kml
 ```
 
 ### Run with GUI from source

@@ -23,7 +23,7 @@ class CliConfig(ConfigCategory):
     input: ConfigParameter = ConfigParameter(
         name="input",
         value="",
-        help="Path to input (file or folder)",
+        help="One or more input paths (GPX, KML, ZIP, or directory)",
         required=True,
         is_cli=True,
     )
@@ -31,22 +31,30 @@ class CliConfig(ConfigCategory):
     # Optional CLI arguments
     output: ConfigParameter = ConfigParameter(
         name="output",
-        value="",
-        help="Path to output destination",
+        value="auto",
+        help="Output directory; 'auto' creates a timestamped directory",
         is_cli=True,
     )
 
-    min_dist: ConfigParameter = ConfigParameter(
-        name="min_dist",
-        value=20,
-        help="Maximum distance between two waypoints",
+    tolerance: ConfigParameter = ConfigParameter(
+        name="tolerance",
+        value=10.0,
+        help="Douglas-Peucker simplification tolerance in meters",
         is_cli=True,
     )
 
-    extract_waypoints: ConfigParameter = ConfigParameter(
-        name="extract_waypoints",
-        value=True,
-        help="Extract starting points of each track as waypoint",
+    mode: ConfigParameter = ConfigParameter(
+        name="mode",
+        value="compress",
+        choices=["compress", "merge", "extract-pois"],
+        help="Processing operation",
+        is_cli=True,
+    )
+
+    recursive: ConfigParameter = ConfigParameter(
+        name="recursive",
+        value=False,
+        help="Search input directories recursively",
         is_cli=True,
     )
 

@@ -16,13 +16,14 @@ The parameters in the cli category can be accessed via the command line interfac
 
 ## Category "cli"
 
-| Name              | Type | Description                                       | Default | Choices       |
-|-------------------|------|---------------------------------------------------|---------|---------------|
-| input             | str  | Path to input (file or folder)                    | ''      | -             |
-| output            | str  | Path to output destination                        | ''      | -             |
-| min_dist          | int  | Maximum distance between two waypoints            | 20      | -             |
-| extract_waypoints | bool | Extract starting points of each track as waypoint | True    | [True, False] |
-| elevation         | bool | Include elevation data in waypoints               | True    | [True, False] |
+| Name      | Type  | Description                                              | Default    | Choices                               |
+|-----------|-------|----------------------------------------------------------|------------|---------------------------------------|
+| input     | str   | One or more input paths (GPX, KML, ZIP, or directory)    | ''         | -                                     |
+| output    | str   | Output directory; 'auto' creates a timestamped directory | 'auto'     | -                                     |
+| tolerance | float | Douglas-Peucker simplification tolerance in meters       | 10.0       | -                                     |
+| mode      | str   | Processing operation                                     | 'compress' | ['compress', 'merge', 'extract-pois'] |
+| recursive | bool  | Search input directories recursively                     | False      | [True, False]                         |
+| elevation | bool  | Include elevation data in waypoints                      | True       | [True, False]                         |
 
 ## Category "gui"
 

@@ -8,13 +8,14 @@ python -m gpx_kml_converter [OPTIONS] input
 
 ## Options
 
-| Option                | Type | Description                                       | Default    | Choices       |
-|-----------------------|------|---------------------------------------------------|------------|---------------|
-| `input`               | str  | Path to input (file or folder)                    | *required* | -             |
-| `--output`            | str  | Path to output destination                        | *required* | -             |
-| `--min_dist`          | int  | Maximum distance between two waypoints            | 20         | -             |
-| `--extract_waypoints` | bool | Extract starting points of each track as waypoint | True       | [True, False] |
-| `--elevation`         | bool | Include elevation data in waypoints               | True       | [True, False] |
+| Option        | Type  | Description                                              | Default    | Choices                               |
+|---------------|-------|----------------------------------------------------------|------------|---------------------------------------|
+| `input`       | str   | One or more input paths (GPX, KML, ZIP, or directory)    | *required* | -                                     |
+| `--output`    | str   | Output directory; 'auto' creates a timestamped directory | 'auto'     | -                                     |
+| `--tolerance` | float | Douglas-Peucker simplification tolerance in meters       | 10.0       | -                                     |
+| `--mode`      | str   | Processing operation                                     | 'compress' | ['compress', 'merge', 'extract-pois'] |
+| `--recursive` | bool  | Search input directories recursively                     | False      | [True, False]                         |
+| `--elevation` | bool  | Include elevation data in waypoints                      | True       | [True, False]                         |
 
 
 ## Examples
@@ -40,20 +41,20 @@ python -m gpx_kml_converter -q input
 python -m gpx_kml_converter --quiet input
 ```
 
-### 4. With min_dist parameter
+### 4. With output parameter
 
 ```bash
-python -m gpx_kml_converter --min_dist 20 input
+python -m gpx_kml_converter --output auto input
 ```
 
-### 5. With extract_waypoints parameter
+### 5. With tolerance parameter
 
 ```bash
-python -m gpx_kml_converter --extract_waypoints True input
+python -m gpx_kml_converter --tolerance 10.0 input
 ```
 
-### 6. With elevation parameter
+### 6. With mode parameter
 
 ```bash
-python -m gpx_kml_converter --elevation True input
+python -m gpx_kml_converter --mode compress input
 ```

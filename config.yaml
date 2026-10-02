@@ -11,14 +11,16 @@ app:
   enable_console_logging: true
   theme: darkly
 cli:
-  # Path to input (file or folder) | type=str | [CLI]
+  # One or more input paths (GPX, KML, ZIP, or directory) | type=str | [CLI]
   input: ''
-  # Path to output destination | type=str | [CLI]
-  output: ''
-  # Maximum distance between two waypoints | type=int | [CLI]
-  min_dist: 20
-  # Extract starting points of each track as waypoint | type=bool | [CLI] | choices=[True, False]
-  extract_waypoints: true
+  # Output directory; 'auto' creates a timestamped directory | type=str | [CLI]
+  output: auto
+  # Douglas-Peucker simplification tolerance in meters | type=float | [CLI]
+  tolerance: 10.0
+  # Processing operation | type=str | [CLI] | choices=['compress', 'merge', 'extract-pois']
+  mode: compress
+  # Search input directories recursively | type=bool | [CLI] | choices=[True, False]
+  recursive: false
   # Include elevation data in waypoints | type=bool | [CLI] | choices=[True, False]
   elevation: true
 gui:

@@ -1,137 +1,171 @@
-"""CLI interface for python-template-project using the generic config framework.
+"""Command-line interface for processing GPX and KML files."""
 
-This file uses the CliGenerator from the generic config framework.
-"""
-
+import argparse
+import math
 from pathlib import Path
 
-from config_cli_gui.cli import CliGenerator
-
 from gpx_kml_converter.config.config import ConfigParameterManager
-from gpx_kml_converter.core.base import BaseGPXProcessor
+from gpx_kml_converter.core.base import BaseGPXProcessor, GeoFileManager
 from gpx_kml_converter.core.logging import initialize_logging
 
+SUPPORTED_INPUTS = {".gpx", ".kml", ".zip"}
+PROCESSING_MODES = ("compress", "merge", "extract-pois")
 
-def validate_config(config: ConfigParameterManager) -> bool:
-    """Validate the configuration parameters.
 
-    Args:
-        config: Configuration manager instance
-
-    Returns:
-        True if configuration is valid, False otherwise
-    """
-    # Initialize logging system
-    logger_manager = initialize_logging(config)
-    logger = logger_manager.get_logger("cli")
-
-    # Get CLI category and check required parameters
-    cli_category = config.cli
-    if not cli_category:
-        logger.error("No CLI configuration found")
+def _parse_bool(value: str) -> bool:
+    normalized = value.lower()
+    if normalized in {"1", "true", "yes", "on"}:
+        return True
+    if normalized in {"0", "false", "no", "off"}:
         return False
-
-    # Check if input parameter exists and has a value
-    input_param = getattr(cli_category, "input", None)
-    if not input_param or not input_param.value:
-        logger.error("Input is required")
-        return False
-
-    # Check if input file exists
-    input_path = Path(input_param.value)
-    if not input_path.exists():
-        logger.error(f"File not found: {input_path}")
-        return False
-
-    logger.debug(f"Input file validation passed: {input_path}")
-    return True
+    raise argparse.ArgumentTypeError("expected true or false")
 
 
-def run_main_processing(config: ConfigParameterManager) -> int:
-    """Main processing function that gets called by the CLI generator.
+def _build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        description="Compress, merge, or extract POIs from GPX/KML files."
+    )
+    parser.add_argument("--config", help="Path to configuration file")
+    parser.add_argument("-v", "--verbose", action="store_true", help="Enable debug logging")
+    parser.add_argument("-q", "--quiet", action="store_true", help="Show warnings and errors only")
+    parser.add_argument(
+        "--mode",
+        choices=PROCESSING_MODES,
+        default=argparse.SUPPRESS,
+        help="Processing operation (default: compress)",
+    )
+    parser.add_argument(
+        "--output",
+        default=argparse.SUPPRESS,
+        help="Output directory",
+    )
+    parser.add_argument(
+        "--tolerance",
+        type=float,
+        default=argparse.SUPPRESS,
+        help="Douglas-Peucker simplification tolerance in meters (default: 10)",
+    )
+    parser.add_argument(
+        "--elevation",
+        nargs="?",
+        const=True,
+        type=_parse_bool,
+        default=argparse.SUPPRESS,
+        help="Add SRTM elevation to extracted waypoints; optionally pass true or false",
+    )
+    recursion = parser.add_mutually_exclusive_group()
+    recursion.add_argument(
+        "--recursive",
+        dest="recursive",
+        nargs="?",
+        const=True,
+        type=_parse_bool,
+        default=argparse.SUPPRESS,
+        help="Search input directories recursively (optionally true or false)",
+    )
+    recursion.add_argument(
+        "--no-recursive", dest="recursive", action="store_false", default=argparse.SUPPRESS
+    )
+    parser.add_argument(
+        "input",
+        nargs="+",
+        metavar="INPUT",
+        help="One or more GPX/KML/ZIP files or directories",
+    )
+    return parser
 
-    Args:
-        config: Configuration manager with all settings
 
-    Returns:
-        Exit code (0 for success, non-zero for error)
-    """
-    # Initialize logging system
-    logger_manager = initialize_logging(config)
+def _expand_inputs(inputs: list[str], recursive: bool) -> list[Path]:
+    expanded: list[Path] = []
+    seen: set[Path] = set()
+
+    for input_value in inputs:
+        path = Path(input_value)
+        if not path.exists():
+            raise ValueError(f"Input path does not exist: {path}")
+        if path.is_dir():
+            candidates = path.rglob("*") if recursive else path.iterdir()
+            paths = sorted(candidate for candidate in candidates if candidate.is_file())
+        elif path.is_file():
+            paths = [path]
+        else:
+            raise ValueError(f"Input path is not a regular file or directory: {path}")
+
+        supported = [item for item in paths if item.suffix.lower() in SUPPORTED_INPUTS]
+        if path.is_file() and not supported:
+            raise ValueError(f"Unsupported input type: {path}")
+        for candidate in supported:
+            normalized = candidate.resolve()
+            if normalized not in seen:
+                seen.add(normalized)
+                expanded.append(normalized)
+
+    if not expanded:
+        raise ValueError("No GPX, KML, or ZIP files found in the provided inputs.")
+    return expanded
+
+
+def main(argv: list[str] | None = None) -> int:
+    """Run the CLI and return a process exit code."""
+    parser = _build_parser()
+    args = parser.parse_args(argv)
+
+    if args.verbose and args.quiet:
+        parser.error("--verbose and --quiet cannot be used together")
+
+    config_manager = ConfigParameterManager(config_file=args.config)
+    cli_overrides = {"cli__input": args.input}
+    for name in ("mode", "output", "tolerance", "elevation", "recursive"):
+        if hasattr(args, name):
+            cli_overrides[f"cli__{name}"] = getattr(args, name)
+    if args.verbose:
+        cli_overrides["app__log_level"] = "DEBUG"
+    elif args.quiet:
+        cli_overrides["app__log_level"] = "WARNING"
+    config_manager.apply_overrides(cli_overrides)
+
+    logger_manager = initialize_logging(config_manager)
     logger = logger_manager.get_logger("cli")
 
     try:
-        # Log startup information
-        logger.info("Starting python_template_project CLI")
-        logger_manager.log_config_summary()
+        input_paths = _expand_inputs(args.input, config_manager.cli.recursive.value)
+        tolerance = config_manager.cli.tolerance.value
+        if not math.isfinite(tolerance) or tolerance < 0:
+            raise ValueError("--tolerance must be a finite, non-negative number of meters.")
 
-        # Validate configuration
-        if not validate_config(config):
-            logger.error("Configuration validation failed")
-            return 1
+        loaded_files = GeoFileManager(logger=logger).load_files(input_paths)
+        if not loaded_files:
+            raise ValueError("No valid GPX or KML data could be loaded.")
 
-        # Get CLI parameters
-        cli_category = config.cli
-        input_file = cli_category.input.value
-        output_file = cli_category.output.value
-        min_dist = cli_category.min_dist.value
-        extract_waypoints = cli_category.extract_waypoints.value
-
-        # Get app parameters
-        app_category = config.app
-        date_format = app_category.date_format.value if app_category else "%Y-%m-%d"
-
-        logger.info(f"Processing input: {input_file}")
-
-        # Create and run BaseGPXProcessor
+        logger.info(f"Loaded {len(loaded_files)} input files.")
         processor = BaseGPXProcessor(
-            input_=input_file,
-            output=output_file,
-            min_dist=min_dist,
-            date_format=date_format,
-            elevation=extract_waypoints,
+            input_=list(loaded_files.values()),
+            output=config_manager.cli.output.value,
+            tolerance=tolerance,
+            date_format=config_manager.app.date_format.value,
+            elevation=config_manager.cli.elevation.value,
             logger=logger,
         )
+        mode = config_manager.cli.mode.value
+        if mode not in PROCESSING_MODES:
+            raise ValueError(f"Unsupported processing mode in configuration: {mode}")
+        process = {
+            "compress": processor.compress_files,
+            "merge": processor.merge_files,
+            "extract-pois": processor.extract_pois,
+        }[mode]
+        result_files = process()
+        if not result_files:
+            raise RuntimeError(f"The {mode} operation did not produce any output files.")
 
-        logger.info("Starting conversion process")
-        logger.info(f"Original file size: {Path(input_file).stat().st_size / 1024:.2f} KB")
-
-        # Run the processing (adjust method name based on your actual implementation)
-        result_files = processor.compress_files()
-
-        logger.info(f"Successfully processed: {input_file}")
-        if output_file:
-            logger.info(f"Output written to: {output_file}")
-        if result_files:
-            logger.info(f"Generated files: {', '.join(result_files)}")
-
-        logger.info("CLI processing completed successfully")
+        logger.info(f"Processing completed successfully: {len(result_files)} output file(s).")
+        for output_path in result_files:
+            logger.info(f"Output written to: {output_path}")
         return 0
-
-    except Exception as e:
-        logger.error(f"Processing failed: {e}")
-        logger.debug("Full traceback:", exc_info=True)
+    except (OSError, ValueError, RuntimeError) as error:
+        logger.error(f"Processing failed: {error}")
         return 1
 
 
-def main():
-    """Main entry point for the CLI application."""
-    # Create the base configuration manager
-    config_manager = ConfigParameterManager()
-
-    # Create CLI generator
-    cli_generator = CliGenerator(config_manager=config_manager, app_name="python_template_project")
-
-    # Run the CLI with our main processing function
-    return cli_generator.run_cli(
-        main_function=run_main_processing,
-        description="Process GPX files with various operations like compression, "
-        "merging, and POI extraction",
-        validator=validate_config,
-    )
-
-
 if __name__ == "__main__":
-    import sys
-
-    sys.exit(main())
+    raise SystemExit(main())

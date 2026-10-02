@@ -723,7 +723,7 @@ class MainGui:
                 processor = BaseGPXProcessor(
                     input_=selected_gpx_objects,
                     output=self.config_manager.cli.output.value,
-                    min_dist=self.config_manager.cli.min_dist.value,
+                    tolerance=self.config_manager.cli.tolerance.value,
                     date_format=self.config_manager.app.date_format.value,
                     elevation=self.config_manager.cli.elevation.value,
                     logger=self.logger,

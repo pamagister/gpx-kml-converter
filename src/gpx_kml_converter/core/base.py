@@ -1,13 +1,15 @@
 import logging
 import math
-import shutil
+import tempfile
 import traceback
 import zipfile
+from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
 
 import gpxpy
 from gpxpy.gpx import GPX, GPXTrackPoint, GPXWaypoint, GPXXMLSyntaxException
+from pyproj import CRS, Transformer
 from shapely.geometry import LineString, Point
 
 # Optional SRTM import with fallback
@@ -39,18 +41,17 @@ class GeoFileManager:
     def __init__(self, logger: logging.Logger = None):
         self.logger = logger if logger else logging.getLogger(__name__)
 
-    def _extract_gpx_kml_from_zip(self, zip_path: Path) -> list[Path]:
-        """Extract GPX/KML files from ZIP archive to temporary location."""
+    def _extract_gpx_kml_from_zip(self, zip_path: Path, temp_dir: Path) -> list[Path]:
+        """Extract GPX/KML files from ZIP archive to a unique temporary location."""
         extracted_files = []
-        temp_dir = Path.cwd() / "temp_extracted_files"
+        archive_dir = temp_dir / zip_path.stem
+        archive_dir.mkdir(parents=True, exist_ok=True)
 
         try:
-            temp_dir.mkdir(exist_ok=True)
-
             with zipfile.ZipFile(zip_path, "r") as zip_ref:
-                for file_info in zip_ref.infolist():
+                for index, file_info in enumerate(zip_ref.infolist()):
                     if file_info.filename.lower().endswith((".gpx", ".kml")):
-                        extracted_path = temp_dir / Path(file_info.filename).name
+                        extracted_path = archive_dir / f"{index}_{Path(file_info.filename).name}"
                         with open(extracted_path, "wb") as f:
                             f.write(zip_ref.read(file_info.filename))
                         extracted_files.append(extracted_path)
@@ -58,8 +59,6 @@ class GeoFileManager:
         except Exception as e:
             self.logger.error(f"Error extracting ZIP file {zip_path}: {e}")
             self.logger.debug(f"Full traceback:\n{traceback.format_exc()}")
-            if temp_dir.exists():
-                shutil.rmtree(temp_dir)  # Clean up on error
         return extracted_files
 
     def _load_gpx_file(self, gpx_path: Path) -> GPX | None:
@@ -142,35 +141,28 @@ class GeoFileManager:
         If a ZIP file is provided, its contents are extracted and processed.
         """
         gpx_data_map = {}
-        all_files_to_process = []
+        with tempfile.TemporaryDirectory(prefix="gpx_kml_converter_") as temp_path:
+            temp_dir = Path(temp_path)
+            all_files_to_process = []
 
-        for path in file_paths:
-            if path.suffix.lower() == ".zip":
-                extracted = self._extract_gpx_kml_from_zip(path)
-                all_files_to_process.extend(extracted)
-            else:
-                all_files_to_process.append(path)
+            for index, path in enumerate(file_paths):
+                if path.suffix.lower() == ".zip":
+                    extracted = self._extract_gpx_kml_from_zip(path, temp_dir / f"archive_{index}")
+                    all_files_to_process.extend(extracted)
+                else:
+                    all_files_to_process.append(path)
 
-        for file_path in all_files_to_process:
-            if file_path.suffix.lower() == ".gpx":
-                gpx_obj = self._load_gpx_file(file_path)
-            elif file_path.suffix.lower() == ".kml":
-                gpx_obj = self._load_kml_file(file_path)
-            else:
-                self.logger.warning(f"Unsupported file type for {file_path.name}. Skipping.")
-                continue
+            for file_path in all_files_to_process:
+                if file_path.suffix.lower() == ".gpx":
+                    gpx_obj = self._load_gpx_file(file_path)
+                elif file_path.suffix.lower() == ".kml":
+                    gpx_obj = self._load_kml_file(file_path)
+                else:
+                    self.logger.warning(f"Unsupported file type for {file_path.name}. Skipping.")
+                    continue
 
-            if gpx_obj:
-                gpx_data_map[file_path] = gpx_obj
-
-        # Clean up temporary files after processing
-        temp_dir = Path.cwd() / "temp_extracted_files"
-        if temp_dir.exists():
-            try:
-                shutil.rmtree(temp_dir)
-                self.logger.info(f"Cleaned up temporary directory: {temp_dir}")
-            except Exception as e:
-                self.logger.warning(f"Failed to remove temporary directory {temp_dir}: {e}")
+                if gpx_obj:
+                    gpx_data_map[file_path] = gpx_obj
 
         return gpx_data_map
 
@@ -180,21 +172,23 @@ class BaseGPXProcessor:
         self,
         input_: list[GPX] | str | Path,
         output=None,
-        min_dist=10,
+        tolerance=10.0,
         date_format="%Y-%m-%d",
         elevation=True,
         logger=None,
     ):
-        if isinstance(input_, str) | isinstance(input_, Path):
+        if isinstance(input_, str) or isinstance(input_, Path):
             loaded_gpx_map = GeoFileManager(logger=logger).load_files([Path(input_)])
-            self.input = loaded_gpx_map.values()
+            self.input = list(loaded_gpx_map.values())
         elif isinstance(input_, list) and all(isinstance(g, GPX) for g in input_):
             self.input = input_
         else:
             raise ValueError("input_gpx_list must be a list of gpxpy.gpx.GPX objects.")
 
         self.output = output
-        self.min_dist = min_dist
+        if not math.isfinite(tolerance) or tolerance < 0:
+            raise ValueError("tolerance must be a finite, non-negative number of meters.")
+        self.tolerance = tolerance
         self.date_format = date_format
         self.include_elevation = elevation
         self.logger = logger
@@ -266,7 +260,7 @@ class BaseGPXProcessor:
 
     def _get_output_folder(self) -> Path:
         """Get the output folder path, create if not exists."""
-        if self.output:
+        if self.output and self.output != "auto":
             output_path = Path(self.output)
         else:
             timestamp = datetime.now().strftime(
@@ -326,21 +320,12 @@ class BaseGPXProcessor:
     def _optimize_track_points(
         self, track_points: list[GPXTrackPoint] | list[GPXWaypoint]
     ) -> list[GPXTrackPoint]:
-        """Optimize track points by removing close points and cleaning metadata."""
+        """Simplify track points within a meter-based error tolerance."""
         if not track_points:
             return track_points
 
         try:
-            optimized_points = [track_points[0]]  # Always keep first point
-
-            for point in track_points[1:]:
-                # Check distance to last kept point
-                if self._calculate_distance(optimized_points[-1], point) >= self.min_dist:
-                    optimized_points.append(point)
-
-            # Always keep last point if it's different from the last kept point
-            if len(track_points) > 1 and optimized_points[-1] != track_points[-1]:
-                optimized_points.append(track_points[-1])
+            optimized_points = self._douglas_peucker(track_points)
 
             # Clean and optimize each point
             for point in optimized_points:
@@ -383,10 +368,55 @@ class BaseGPXProcessor:
         except Exception as e:
             self.logger.error(f"Error optimizing track points: {e}")
             self.logger.debug(f"Full traceback:\n{traceback.format_exc()}")
-            return track_points  # Return original points if optimization fails
+            raise
+
+    def _douglas_peucker(
+        self, track_points: list[GPXTrackPoint] | list[GPXWaypoint]
+    ) -> list[GPXTrackPoint]:
+        """Return copied points simplified using a local meter-based projection."""
+        if len(track_points) <= 2 or self.tolerance == 0:
+            return [deepcopy(point) for point in track_points]
+
+        origin = track_points[0]
+        local_crs = CRS.from_proj4(
+            f"+proj=aeqd +lat_0={origin.latitude} +lon_0={origin.longitude} "
+            "+datum=WGS84 +units=m +no_defs"
+        )
+        project = Transformer.from_crs("EPSG:4326", local_crs, always_xy=True).transform
+        projected = [project(point.longitude, point.latitude) for point in track_points]
+        keep = [False] * len(track_points)
+        keep[0] = keep[-1] = True
+        intervals = [(0, len(track_points) - 1)]
+
+        while intervals:
+            start, end = intervals.pop()
+            x1, y1 = projected[start]
+            x2, y2 = projected[end]
+            dx, dy = x2 - x1, y2 - y1
+            denominator = dx * dx + dy * dy
+            max_distance = self.tolerance
+            max_index = None
+
+            for index in range(start + 1, end):
+                x, y = projected[index]
+                if denominator == 0:
+                    distance = math.hypot(x - x1, y - y1)
+                else:
+                    fraction = max(0.0, min(1.0, ((x - x1) * dx + (y - y1) * dy) / denominator))
+                    distance = math.hypot(x - (x1 + fraction * dx), y - (y1 + fraction * dy))
+                if distance > max_distance:
+                    max_distance = distance
+                    max_index = index
+
+            if max_index is not None:
+                keep[max_index] = True
+                intervals.extend(((start, max_index), (max_index, end)))
+
+        return [deepcopy(point) for point, should_keep in zip(track_points, keep) if should_keep]
 
     def _optimize_waypoint(self, waypoint: GPXWaypoint) -> GPXWaypoint:
         """Optimize waypoint with error handling."""
+        waypoint = deepcopy(waypoint)
         try:
             # Round coordinates and elevation
             if hasattr(waypoint, "latitude") and waypoint.latitude is not None:
@@ -438,6 +468,7 @@ class BaseGPXProcessor:
         generated_gpx_map = {}
         output_folder = self._get_output_folder()
         self.logger.info(f"Processing {len(self.input)} GPX objects for compression...")
+        used_filenames = set()
 
         for idx, gpx_obj in enumerate(self.input):
             try:
@@ -465,7 +496,13 @@ class BaseGPXProcessor:
                     optimized_gpx.waypoints.append(self._optimize_waypoint(waypoint))
 
                 # Save the optimized GPX
-                output_filename = f"optimized_{gpx_obj.name or f'file_{idx + 1}'}.gpx"
+                base_filename = f"optimized_{gpx_obj.name or f'file_{idx + 1}'}.gpx"
+                output_filename = base_filename
+                duplicate_index = 2
+                while output_filename in used_filenames:
+                    output_filename = f"{Path(base_filename).stem}_{duplicate_index}.gpx"
+                    duplicate_index += 1
+                used_filenames.add(output_filename)
                 output_path = output_folder / output_filename
                 saved_path = self._save_gpx_file(optimized_gpx, output_path)
                 if saved_path:

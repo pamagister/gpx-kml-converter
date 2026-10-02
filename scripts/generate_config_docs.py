@@ -18,5 +18,5 @@ print(f"Generated: {default_config}")
 docGen.generate_config_markdown_doc(output_file=default_config_doc)
 print(f"Generated: {default_config_doc}")
 
-docGen.generate_cli_markdown_doc(output_file=default_cli_doc, app_name="gpx_kml_converter.cli")
+docGen.generate_cli_markdown_doc(output_file=default_cli_doc, app_name="gpx_kml_converter")
 print(f"Generated: {default_cli_doc}")
