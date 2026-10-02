@@ -3,13 +3,22 @@
 Command line options for gpx_kml_converter
 
 ```bash
-python -m gpx_kml_converter [OPTIONS] input
+gpx-kml-converter [OPTIONS] <input>
+```
+
+For development from a source checkout, the equivalent module invocation is:
+
+```bash
+python -m gpx_kml_converter [OPTIONS] <input>
 ```
 
 ## Options
 
 | Option        | Type  | Description                                              | Default    | Choices                               |
 |---------------|-------|----------------------------------------------------------|------------|---------------------------------------|
+| --config      | str   | Path to configuration file                               | -          | -                                     |
+| -v, --verbose | bool  | Enable debug logging                                     | False      | [True, False]                         |
+| -q, --quiet   | bool  | Show warnings and errors only                            | False      | [True, False]                         |
 | `input`       | str   | One or more input paths (GPX, KML, ZIP, or directory)    | *required* | -                                     |
 | `--output`    | str   | Output directory; 'auto' creates a timestamped directory | 'auto'     | -                                     |
 | `--tolerance` | float | Douglas-Peucker simplification tolerance in meters       | 10.0       | -                                     |
@@ -24,37 +33,44 @@ python -m gpx_kml_converter [OPTIONS] input
 ### 1. Basic usage
 
 ```bash
-python -m gpx_kml_converter input
+gpx-kml-converter input
 ```
 
 ### 2. With verbose logging
 
 ```bash
-python -m gpx_kml_converter -v input
-python -m gpx_kml_converter --verbose input
+gpx-kml-converter -v input
+gpx-kml-converter --verbose input
 ```
 
 ### 3. With quiet mode
 
 ```bash
-python -m gpx_kml_converter -q input
-python -m gpx_kml_converter --quiet input
+gpx-kml-converter -q input
+gpx-kml-converter --quiet input
 ```
 
 ### 4. With output parameter
 
 ```bash
-python -m gpx_kml_converter --output auto input
+gpx-kml-converter --output auto input
 ```
 
 ### 5. With tolerance parameter
 
 ```bash
-python -m gpx_kml_converter --tolerance 10.0 input
+gpx-kml-converter --tolerance 10.0 input
 ```
 
 ### 6. With mode parameter
 
 ```bash
-python -m gpx_kml_converter --mode compress input
+gpx-kml-converter --mode compress input
+```
+
+### Developer usage
+
+```bash
+python -m gpx_kml_converter --help
+python -m gpx_kml_converter input
 ```

@@ -3,7 +3,16 @@
 These parameters are available to configure the behavior of your application.
 The parameters in the cli category can be accessed via the command line interface.
 
-## Category "app"
+## Configuration File Reference
+
+The actual configuration is stored in [`config.yaml`](../../config.yaml). You can:
+
+- Edit the configuration file directly using your text editor
+- Use the `--config` command-line option to specify a custom config file
+- Place a `config.yaml` in your application's config
+  directory (typically `~/.config/config-cli-gui/`)
+
+## Category "app" {#app}
 
 | Name                   | Type | Description                                 | Default    | Choices                                                                                                                                               |
 |------------------------|------|---------------------------------------------|------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -14,7 +23,7 @@ The parameters in the cli category can be accessed via the command line interfac
 | enable_console_logging | bool | Enable logging to console                   | True       | [True, False]                                                                                                                                         |
 | theme                  | str  | GUI theme setting supported by ttkbootstrap | 'darkly'   | ['cosmo', 'flatly', 'litera', 'minty', 'lumen', 'sandstone', 'yeti', 'pulse', 'united', 'darkly', 'superhero', 'solar', 'cyborg', 'vapor', 'simplex'] |
 
-## Category "cli"
+## Category "cli" {#cli}
 
 | Name      | Type  | Description                                              | Default    | Choices                               |
 |-----------|-------|----------------------------------------------------------|------------|---------------------------------------|
@@ -25,7 +34,7 @@ The parameters in the cli category can be accessed via the command line interfac
 | recursive | bool  | Search input directories recursively                     | False      | [True, False]                         |
 | elevation | bool  | Include elevation data in waypoints                      | True       | [True, False]                         |
 
-## Category "gui"
+## Category "gui" {#gui}
 
 | Name              | Type | Description                                | Default | Choices                   |
 |-------------------|------|--------------------------------------------|---------|---------------------------|
