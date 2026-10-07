@@ -18,7 +18,7 @@ cli:
   output: auto
   # Douglas-Peucker simplification tolerance in meters | type=float | [CLI]
   tolerance: 10.0
-  # Processing operation | type=str | [CLI] | choices=['compress', 'merge', 'extract-pois']
+  # Processing operation | type=str | [CLI] | choices=['compress', 'merge', 'extract-pois', 'add-poi']
   mode: compress
   # Search input directories recursively | type=bool | [CLI] | choices=[True, False]
   recursive: false

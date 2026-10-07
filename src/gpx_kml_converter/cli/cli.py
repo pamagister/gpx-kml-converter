@@ -6,10 +6,11 @@ from pathlib import Path
 
 from gpx_kml_converter.config.config import ConfigParameterManager
 from gpx_kml_converter.core.base import BaseGPXProcessor, GeoFileManager
+from gpx_kml_converter.core.gpx_file import add_poi_to_gpx
 from gpx_kml_converter.core.logging import initialize_logging
 
 SUPPORTED_INPUTS = {".gpx", ".kml", ".zip"}
-PROCESSING_MODES = ("compress", "merge", "extract-pois")
+PROCESSING_MODES = ("compress", "merge", "extract-pois", "add-poi")
 
 
 def _parse_bool(value: str) -> bool:
@@ -23,7 +24,7 @@ def _parse_bool(value: str) -> bool:
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Compress, merge, or extract POIs from GPX/KML files."
+        description="Compress, merge, or extract POIs from GPX/KML files, or add a GPX waypoint."
     )
     parser.add_argument("--config", help="Path to configuration file")
     parser.add_argument("-v", "--verbose", action="store_true", help="Enable debug logging")
@@ -37,7 +38,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--output",
         default=argparse.SUPPRESS,
-        help="Output directory",
+        help="Output directory, or output GPX file in add-poi mode",
     )
     parser.add_argument(
         "--tolerance",
@@ -52,6 +53,14 @@ def _build_parser() -> argparse.ArgumentParser:
         type=_parse_bool,
         default=argparse.SUPPRESS,
         help="Add SRTM elevation to extracted waypoints; optionally pass true or false",
+    )
+    parser.add_argument("--lat", type=float, help="Latitude of the waypoint (add-poi mode)")
+    parser.add_argument("--lon", type=float, help="Longitude of the waypoint (add-poi mode)")
+    parser.add_argument("--name", help="Name of the waypoint (add-poi mode)")
+    parser.add_argument("--desc", help="Description of the waypoint (add-poi mode)")
+    parser.add_argument("--sym", help="Symbol of the waypoint (add-poi mode)")
+    parser.add_argument(
+        "--ele", type=float, help="Elevation of the waypoint in meters (add-poi mode)"
     )
     recursion = parser.add_mutually_exclusive_group()
     recursion.add_argument(
@@ -124,10 +133,37 @@ def main(argv: list[str] | None = None) -> int:
         cli_overrides["app__log_level"] = "WARNING"
     config_manager.apply_overrides(cli_overrides)
 
+    mode = config_manager.cli.mode.value
+    if mode == "add-poi":
+        if len(args.input) != 1:
+            parser.error("add-poi requires exactly one GPX input path")
+        if args.lat is None or args.lon is None or args.name is None:
+            parser.error("add-poi requires --lat, --lon, and --name")
+        if Path(args.input[0]).suffix.lower() != ".gpx":
+            parser.error("add-poi accepts only a .gpx input path")
+
     logger_manager = initialize_logging(config_manager)
     logger = logger_manager.get_logger("cli")
 
     try:
+        if mode not in PROCESSING_MODES:
+            raise ValueError(f"Unsupported processing mode in configuration: {mode}")
+        if mode == "add-poi":
+            input_path = Path(args.input[0])
+            output_path = Path(args.output) if hasattr(args, "output") else input_path
+            saved_path = add_poi_to_gpx(
+                input_path=input_path,
+                output_path=output_path,
+                latitude=args.lat,
+                longitude=args.lon,
+                name=args.name,
+                description=args.desc,
+                symbol=args.sym,
+                elevation=args.ele,
+            )
+            logger.info(f"POI added successfully. Output written to: {saved_path}")
+            return 0
+
         input_paths = _expand_inputs(args.input, config_manager.cli.recursive.value)
         tolerance = config_manager.cli.tolerance.value
         if not math.isfinite(tolerance) or tolerance < 0:
@@ -146,9 +182,6 @@ def main(argv: list[str] | None = None) -> int:
             elevation=config_manager.cli.elevation.value,
             logger=logger,
         )
-        mode = config_manager.cli.mode.value
-        if mode not in PROCESSING_MODES:
-            raise ValueError(f"Unsupported processing mode in configuration: {mode}")
         process = {
             "compress": processor.compress_files,
             "merge": processor.merge_files,

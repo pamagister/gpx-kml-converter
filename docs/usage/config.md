@@ -23,14 +23,14 @@ The actual configuration is stored in [`config.yaml`](../../config.yaml). You ca
 
 ## Category "cli" {#cli}
 
-| Name      | Type  | Description                                              | Default    | Choices                               |
-|-----------|-------|----------------------------------------------------------|------------|---------------------------------------|
-| input     | str   | One or more input paths (GPX, KML, ZIP, or directory)    | ''         | -                                     |
-| output    | str   | Output directory; 'auto' creates a timestamped directory | 'auto'     | -                                     |
-| tolerance | float | Douglas-Peucker simplification tolerance in meters       | 10.0       | -                                     |
-| mode      | str   | Processing operation                                     | 'compress' | ['compress', 'merge', 'extract-pois'] |
-| recursive | bool  | Search input directories recursively                     | False      | [True, False]                         |
-| elevation | bool  | Include elevation data in waypoints                      | True       | [True, False]                         |
+| Name      | Type  | Description                                              | Default    | Choices                                          |
+|-----------|-------|----------------------------------------------------------|------------|--------------------------------------------------|
+| input     | str   | One or more input paths (GPX, KML, ZIP, or directory)    | ''         | -                                                |
+| output    | str   | Output directory; 'auto' creates a timestamped directory | 'auto'     | -                                                |
+| tolerance | float | Douglas-Peucker simplification tolerance in meters       | 10.0       | -                                                |
+| mode      | str   | Processing operation                                     | 'compress' | ['compress', 'merge', 'extract-pois', 'add-poi'] |
+| recursive | bool  | Search input directories recursively                     | False      | [True, False]                                    |
+| elevation | bool  | Include elevation data in waypoints                      | True       | [True, False]                                    |
 
 ## Category "gui" {#gui}
 

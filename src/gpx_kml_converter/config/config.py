@@ -46,7 +46,7 @@ class CliConfig(ConfigCategory):
     mode: ConfigParameter = ConfigParameter(
         name="mode",
         value="compress",
-        choices=["compress", "merge", "extract-pois"],
+        choices=["compress", "merge", "extract-pois", "add-poi"],
         help="Processing operation",
         is_cli=True,
     )
