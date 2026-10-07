@@ -4,6 +4,24 @@ Changelog
 
 (unreleased)
 ------------
+- Seit Commit bb514f3 stehen die Doku-Abhängigkeiten in [dependency-
+  groups], Read the Docs installierte aber weiterhin das pip-Extra
+  .[docs]. Dadurch wurde mkdocs-awesome-nav nicht installiert. Ich habe
+  .readthedocs.yaml auf Read the Docs’ uv-Integration mit der Gruppe
+  docs umgestellt. Hinweis: uv sync wählt standardmäßig auch die dev-
+  Gruppe aus. [Paul Magister]
+- Die Windows-Fehlerursache ist behoben: Der CLI-Aufruf schließt jetzt
+  seine Log-Handler auch bei Fehlern, und beim erneuten Initialisieren
+  werden vorhandene Handler ordnungsgemäß geschlossen. Dadurch bleiben
+  keine Logdateien in temporären Testverzeichnissen gesperrt. Eine
+  Regressionstest-Abdeckung prüft, dass der Logdatei-Handler nach der
+  CLI-Ausführung geschlossen ist. [Paul Magister]
+- Remove copy-paste-ini files from makefile. [Paul Magister]
+
+
+1.1.2 (2026-10-07)
+------------------
+- Docs: Update HISTORY.md for release 1.1.2. [Paul Magister]
 - Beim Merge bleiben jetzt Beschreibungen aus GPX und KML erhalten – bei
   Wegpunkten, Tracks, Routen und Trackpunkten. Trackpunkte mit
   Beschreibung werden außerdem nicht durch die Geometrievereinfachung
