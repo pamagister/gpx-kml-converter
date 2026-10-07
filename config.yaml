@@ -9,6 +9,7 @@ app:
   enable_file_logging: true
   # Enable logging to console | type=bool | choices=[True, False]
   enable_console_logging: true
+  # GUI theme setting supported by ttkbootstrap | type=str | choices=['cosmo', 'flatly', 'litera', 'minty', 'lumen', 'sandstone', 'yeti', 'pulse', 'united', 'darkly', 'superhero', 'solar', 'cyborg', 'vapor', 'simplex']
   theme: darkly
 cli:
   # One or more input paths (GPX, KML, ZIP, or directory) | type=str | [CLI]

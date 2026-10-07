@@ -164,7 +164,7 @@ wheels = [
 
 [[package]]
 name = "config-cli-gui"
-version = "0.3.9"
+version = "0.3.10"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "pillow" },
@@ -172,9 +172,9 @@ dependencies = [
     { name = "pyyaml" },
     { name = "ttkbootstrap" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/14/ea/b663de4e2940b635dc1a7de2cf938eee107414dd717038a685097ffd85fe/config_cli_gui-0.3.9.tar.gz", hash = "sha256:6e5b31d7028af2eaed566542d6323f77ff32eb37629131ac0e50ced1b85ef0d6", size = 250493, upload-time = "2026-10-02T13:50:14.2Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/35/07/bac5843e825aa870f85d9e64267b8c57c2b51a6181f481919d778632464d/config_cli_gui-0.3.10.tar.gz", hash = "sha256:37602b0dfca21aa36ddb563ee78f8abfaadf1c0cc732a1bfbdb121009b9a30ae", size = 258074, upload-time = "2026-10-06T21:26:47.816Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/8f/08/c33b6d667483e5254458991b99d4e3173db4be1f3db956b422bd77c4396a/config_cli_gui-0.3.9-py3-none-any.whl", hash = "sha256:10d9c917419b423c2f6e5ecf10cab8d94de9186f5eba7f4a9ebb82279edbaeae", size = 28335, upload-time = "2026-10-02T13:50:12.942Z" },
+    { url = "https://files.pythonhosted.org/packages/c5/23/af0ab1a44b92efcc94e54c808d5e1703269a2d5c48993db126bf80603a46/config_cli_gui-0.3.10-py3-none-any.whl", hash = "sha256:cb2ce99c0a5748fdd38f408c4f0cac14b13da8b058bece7071f484aa75a29cbc", size = 33279, upload-time = "2026-10-06T21:26:46.64Z" },
 ]
 
 [[package]]
@@ -431,7 +431,7 @@ dependencies = [
     { name = "ttkbootstrap" },
 ]
 
-[package.optional-dependencies]
+[package.dev-dependencies]
 dev = [
     { name = "black" },
     { name = "coverage" },
@@ -454,32 +454,37 @@ docs = [
 
 [package.metadata]
 requires-dist = [
-    { name = "black", marker = "extra == 'dev'", specifier = ">=25.1.0" },
-    { name = "config-cli-gui", specifier = ">=0.3.9" },
-    { name = "coverage", marker = "extra == 'dev'", specifier = ">=7.8.2" },
+    { name = "config-cli-gui", specifier = ">=0.3.10" },
     { name = "fastkml", specifier = ">=1.1.0" },
-    { name = "flake8", marker = "extra == 'dev'", specifier = ">=7.2.0" },
     { name = "geopandas", specifier = ">=1.1.0" },
-    { name = "gitchangelog", marker = "extra == 'dev'", specifier = ">=3.0.4" },
     { name = "gpxpy", specifier = ">=1.6.2" },
-    { name = "isort", marker = "extra == 'dev'", specifier = ">=6.0.1" },
     { name = "matplotlib", specifier = ">=3.10.3" },
-    { name = "mkdocs", marker = "extra == 'docs'", specifier = ">=1.6.1" },
-    { name = "mkdocs-awesome-nav", marker = "extra == 'docs'", specifier = ">=2.6.1" },
-    { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.16.0" },
-    { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=4.2.0" },
-    { name = "pygments", marker = "extra == 'docs'", specifier = ">=2.19.1" },
-    { name = "pyinstaller", marker = "extra == 'dev'", specifier = ">=5.8" },
     { name = "pyproj", specifier = ">=3.7.0" },
-    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.4.0" },
-    { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=6.1.1" },
-    { name = "pytest-mock", marker = "extra == 'dev'", specifier = ">=3.14.1" },
-    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.11.13" },
     { name = "shapely", specifier = ">=2.1.1" },
     { name = "srtm-py", specifier = ">=0.3.7" },
     { name = "ttkbootstrap", specifier = ">=1.20.3" },
 ]
-provides-extras = ["dev", "docs"]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "black", specifier = ">=25.1.0" },
+    { name = "coverage", specifier = ">=7.8.2" },
+    { name = "flake8", specifier = ">=7.2.0" },
+    { name = "gitchangelog", specifier = ">=3.0.4" },
+    { name = "isort", specifier = ">=6.0.1" },
+    { name = "mypy", specifier = ">=1.16.0" },
+    { name = "pre-commit", specifier = ">=4.2.0" },
+    { name = "pyinstaller", specifier = ">=5.8" },
+    { name = "pytest", specifier = ">=8.4.0" },
+    { name = "pytest-cov", specifier = ">=6.1.1" },
+    { name = "pytest-mock", specifier = ">=3.14.1" },
+    { name = "ruff", specifier = ">=0.11.13" },
+]
+docs = [
+    { name = "mkdocs", specifier = ">=1.6.1" },
+    { name = "mkdocs-awesome-nav", specifier = ">=2.6.1" },
+    { name = "pygments", specifier = ">=2.19.1" },
+]
 
 [[package]]
 name = "gpxpy"

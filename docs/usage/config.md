@@ -1,7 +1,7 @@
 # Configuration Parameters
 
 These parameters are available to configure the behavior of your application.
-The parameters in the cli category can be accessed via the command line interface.
+Parameters marked as CLI parameters can also be set via the command line interface.
 
 ## Configuration File Reference
 
@@ -9,8 +9,6 @@ The actual configuration is stored in [`config.yaml`](../../config.yaml). You ca
 
 - Edit the configuration file directly using your text editor
 - Use the `--config` command-line option to specify a custom config file
-- Place a `config.yaml` in your application's config
-  directory (typically `~/.config/config-cli-gui/`)
 
 ## Category "app" {#app}
 
