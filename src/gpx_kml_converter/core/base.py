@@ -10,7 +10,6 @@ from pathlib import Path
 import gpxpy
 from gpxpy.gpx import GPX, GPXTrackPoint, GPXWaypoint, GPXXMLSyntaxException
 from pyproj import CRS, Transformer
-from shapely.geometry import LineString, Point
 
 # Optional SRTM import with fallback
 try:
@@ -23,13 +22,15 @@ except ImportError:
 
 # Optional fastkml import for KML reading
 try:
-    from fastkml import kml, styles
-    from fastkml.features import Document, Folder, Placemark
+    from fastkml import kml
+    from fastkml.containers import Document, Folder
+    from fastkml.features import Placemark
+    from pygeoif.geometry import LineString, Point
 
     KML_AVAILABLE = True
 except ImportError:
     KML_AVAILABLE = False
-    kml = styles = Folder = Placemark = Document = Point = LineString = None
+    kml = Folder = Placemark = Document = LineString = Point = None
 
 NAME = "gpx_kml_converter"
 
@@ -83,19 +84,12 @@ class GeoFileManager:
             return None
 
         try:
-            with open(kml_path, "r", encoding="utf-8") as f:
-                doc = f.read()
-            k = kml.KML()
-            k.from_string(doc)
+            k = kml.KML.parse(kml_path)
             gpx = gpxpy.gpx.GPX()
 
             # Iterate through KML features and convert to GPX tracks/waypoints
-            for feature in k.features():
-                if isinstance(feature, Document) or isinstance(feature, Folder):
-                    for sub_feature in feature.features():
-                        self._process_kml_feature(sub_feature, gpx)
-                else:
-                    self._process_kml_feature(feature, gpx)
+            for feature in k.features:
+                self._process_kml_feature(feature, gpx)
             self.logger.info(f"Successfully loaded and converted KML file {kml_path.name} to GPX.")
             return gpx
         except Exception as e:
@@ -131,8 +125,8 @@ class GeoFileManager:
                         gpx_track.segments.append(gpx_segment)
                     if gpx_track.segments:
                         gpx.tracks.append(gpx_track)
-        elif isinstance(feature, Document) or isinstance(feature, Folder):
-            for sub_feature in feature.features():
+        elif isinstance(feature, Document | Folder):
+            for sub_feature in feature.features:
                 self._process_kml_feature(sub_feature, gpx)
 
     def load_files(self, file_paths: list[Path]) -> dict[Path, GPX]:

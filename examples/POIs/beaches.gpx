@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="Digital-Security-Ops-Mastery"
+     xmlns="http://www.topografix.com/GPX/1/1"
+     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+     xsi:schemaLocation="http://www.topografix.com/GPX/1/1 https://www.topografix.com/GPX/1/1/gpx.xsd">
+  <metadata>
+    <name>Sardinien Strände</name>
+  </metadata>
+  <wpt lat="40.9652807" lon="8.2096592">
+    <name>Spiaggia La Pelosa</name>
+    <desc>Ikonischer Traumstrand bei Stintino mit extrem feinem weißem Sand und sehr flachem, ruhigem türkisfarbenem Wasser. Für Kinder nahezu ideal. In der Hauptsaison Zugang limitiert und reservierungspflichtig. Bewertung: 5/5</desc>
+  </wpt>
+  <wpt lat="40.8346441" lon="9.6855594">
+    <name>Brandinchi Beach</name>
+    <desc>Cala Brandinchi, oft 'Little Tahiti' genannt. Weißer Sand, kristallklares und sehr flach abfallendes Wasser, Pinien und Dünen. Einer der besten Strände für kleine Kinder. In der Hauptsaison Zugang reguliert. Bewertung: 5/5</desc>
+  </wpt>
+  <wpt lat="40.8250911" lon="9.6805667">
+    <name>Lu Impostu Beach</name>
+    <desc>Breiter, heller Sandstrand südlich von Cala Brandinchi. Sehr flaches Wasser, schöne Dünenlandschaft und viel Platz. Hervorragende Familienalternative zu Brandinchi. Bewertung: 5/5</desc>
+  </wpt>
+  <wpt lat="40.7952107" lon="9.669953">
+    <name>La Cinta</name>
+    <desc>Sehr langer Sandstrand bei San Teodoro mit flachem Wasser und viel Platz. Gute Infrastruktur und dadurch besonders unkompliziert mit Kindern. Bewertung: 4/5</desc>
+  </wpt>
+  <wpt lat="40.8920731" lon="9.6148245">
+    <name>Spiaggia di Porto Istana</name>
+    <desc>Feiner heller Sand mit spektakulärem Blick auf die Insel Tavolara. Ruhiges, flaches Wasser und geschützte Lage machen den Strand familienfreundlich. Bewertung: 5/5</desc>
+  </wpt>
+  <wpt lat="40.9541053" lon="9.5778275">
+    <name>Spiaggia di Pittulongu</name>
+    <desc>Schöner, gut erreichbarer Sandstrand nahe Olbia mit klarem Wasser und mehreren Strandbars. Praktisch für Familien, wenn kurze Wege und Infrastruktur wichtig sind. Bewertung: 4/5</desc>
+  </wpt>
+  <wpt lat="41.0793521" lon="9.5520121">
+    <name>Spiaggia di Capriccioli</name>
+    <desc>Kleine, sehr hübsche Buchten an der Costa Smeralda mit feinem Sand, Granitfelsen und meist geschütztem Wasser. Sehr schöne Kombination aus Landschaft und Badetauglichkeit. Bewertung: 5/5</desc>
+  </wpt>
+  <wpt lat="41.089162" lon="9.5614982">
+    <name>Spiaggia del Principe</name>
+    <desc>Eine der berühmtesten Buchten der Costa Smeralda. Heller Sand, türkisfarbenes Wasser und markante Granitfelsen. Etwas weniger komfortabel als große Familienstrände, aber landschaftlich herausragend. Bewertung: 5/5</desc>
+  </wpt>
+  <wpt lat="41.1124716" lon="9.5451569">
+    <name>Spiaggia Grande Pevero</name>
+    <desc>Breiter, sehr schöner Sandstrand bei Porto Cervo mit türkisfarbenem Wasser und geschützter Bucht. Gute Wahl für Familien, die Costa-Smeralda-Flair ohne ganz kleine Badebucht suchen. Bewertung: 5/5</desc>
+  </wpt>
+  <wpt lat="41.1460632" lon="9.5262055">
+    <name>Cala Granu</name>
+    <desc>Kleine, geschützte Sandbucht nördlich von Porto Cervo. Feiner Sand und meist ruhiges Wasser. Besonders schön für einen entspannten Familien-Badetag. Bewertung: 4/5</desc>
+  </wpt>
+  <wpt lat="41.245117" lon="9.1889954">
+    <name>Spiaggia Rena Bianca</name>
+    <desc>Der Hausstrand von Santa Teresa Gallura mit feinem hellen Sand, türkisfarbenem Wasser und Blick auf Korsika. Flaches Wasser und zentrale Lage sind ideal mit Kindern. Bewertung: 5/5</desc>
+  </wpt>
+  <wpt lat="41.0704637" lon="9.5285342">
+    <name>Spiaggia di Liscia Ruja</name>
+    <desc>Sehr langer, heller Sandstrand an der Costa Smeralda. Türkisfarbenes Wasser, schöne Landschaft und deutlich mehr Platz als an den kleinen Luxusbuchten. Bewertung: 5/5</desc>
+  </wpt>
+  <wpt lat="40.5866852" lon="8.3061264">
+    <name>Spiaggia di Maria Pia</name>
+    <desc>Breiter Sandstrand bei Alghero mit Dünen und Pinienwald. Flach abfallendes Wasser und gute Infrastruktur machen ihn zu einem der besseren Familienstrände im Nordwesten. Bewertung: 4/5</desc>
+  </wpt>
+  <wpt lat="40.6166074" lon="8.2063912">
+    <name>Spiaggia di Mugoni</name>
+    <desc>Lange, geschützte Bucht bei Alghero mit hellem Sand, Pinien und ruhigem Wasser. Sehr gute Kombination aus Natur, Schattenmöglichkeiten und Familienfreundlichkeit. Bewertung: 5/5</desc>
+  </wpt>
+  <wpt lat="40.5820291" lon="8.2465861">
+    <name>Spiaggia del Lazzaretto</name>
+    <desc>Mehrere kleine Sandbuchten bei Alghero mit klarem türkisfarbenem Wasser und schöner Felskulisse. Kleinräumiger und etwas abwechslungsreicher als Maria Pia. Bewertung: 4/5</desc>
+  </wpt>
+  <wpt lat="39.9513409" lon="8.4015005">
+    <name>Is Arutas</name>
+    <desc>Berühmter Quarzsandstrand auf der Sinis-Halbinsel. Die winzigen weißen, rosa und grünlichen Quarzkörner machen ihn einzigartig. Landschaftlich grandios, allerdings kann das Meer je nach Wind welliger sein. Bewertung: 5/5</desc>
+  </wpt>
+  <wpt lat="39.9668216" lon="8.3994744">
+    <name>Spiaggia di Mari Ermi</name>
+    <desc>Traumhafter Quarzsandstrand auf der Sinis-Halbinsel. Weniger spektakulär erschlossen als die großen Badebuchten, dafür sehr natürlich und weitläufig. Bewertung: 5/5</desc>
+  </wpt>
+  <wpt lat="40.0908469" lon="8.4908463">
+    <name>Spiaggia di S'Archittu</name>
+    <desc>Kleine Badebucht bei einer spektakulären natürlichen Felsbrücke. Sehr schöne Landschaft und klares Wasser; eher für größere Kinder interessant als für Kleinkinder. Bewertung: 4/5</desc>
+  </wpt>
+  <wpt lat="39.9050447" lon="8.5187589">
+    <name>Spiaggia di Torre Grande</name>
+    <desc>Langer Sandstrand bei Oristano mit guter Infrastruktur, flachem Einstieg und viel Platz. Optisch nicht Sardiniens spektakulärster Strand, aber praktisch und familienfreundlich. Bewertung: 3/5</desc>
+  </wpt>
+  <wpt lat="40.4315903" lon="9.7771128">
+    <name>Cala Liberotto</name>
+    <desc>Mehrere helle Sandbuchten südlich von Orosei mit kristallklarem Wasser und Granitfelsen. Sehr schöne Mischung aus Badebucht und natürlicher Landschaft. Bewertung: 5/5</desc>
+  </wpt>
+  <wpt lat="40.4471291" lon="9.7936534">
+    <name>Spiaggia di Cala Ginepro</name>
+    <desc>Feiner Sand, türkisfarbenes Wasser und ein von Pinien geprägtes Umfeld. Geschützte Lage und flacher Einstieg machen den Strand gut für Familien. Bewertung: 5/5</desc>
+  </wpt>
+  <wpt lat="40.4575799" lon="9.8005507">
+    <name>OASI BIDEROSA</name>
+    <desc>Naturpark mit mehreren außergewöhnlich schönen Sandbuchten. Weißer Sand, türkisfarbenes Wasser und Pinienwald. Sehr hoher landschaftlicher Wert; Zugang und Besucherzahl sind reguliert. Bewertung: 5/5</desc>
+  </wpt>
+  <wpt lat="40.2264753" lon="9.6259242">
+    <name>Cala Luna</name>
+    <desc>Spektakuläre Bucht am Golfo di Orosei mit hellem Sand, türkisfarbenem Wasser und großen Felsgrotten. Landschaftlich absolute Spitzenklasse, aber wegen Bootsanreise bzw. Wanderweg logistisch anspruchsvoller mit kleinen Kindern. Bewertung: 5/5</desc>
+  </wpt>
+  <wpt lat="39.1160084" lon="9.5191778">
+    <name>Spiaggia di Porto Giunco</name>
+    <desc>Einer der schönsten Strände im Süden bei Villasimius. Sehr heller Sand, türkisfarbenes flaches Wasser und die berühmte Lagune mit Flamingos dahinter. Bewertung: 5/5</desc>
+  </wpt>
+  <wpt lat="39.1336239" lon="9.5563807">
+    <name>Spiaggia di Punta Molentis</name>
+    <desc>Postkartenmotiv bei Villasimius mit schmaler Landzunge, weißem Sand und türkisfarbenem Wasser auf beiden Seiten. Extrem schön, allerdings klein und in der Saison stark frequentiert. Bewertung: 5/5</desc>
+  </wpt>
+  <wpt lat="38.8948922" lon="8.8138714">
+    <name>Spiaggia di Tuerredda</name>
+    <desc>Karibisch anmutender Strand im Süden mit feinem Sand, türkisfarbenem Wasser und geschützter Bucht. Sehr flacher Einstieg und daher hervorragend für Kinder. Zugang in der Hauptsaison reguliert. Bewertung: 5/5</desc>
+  </wpt>
+  <wpt lat="38.8840142" lon="8.8634758">
+    <name>Su Giudeu</name>
+    <desc>Breiter Sandstrand bei Chia mit flachem, klarem Wasser, Dünen und vorgelagerter kleiner Insel. Sehr familienfreundlich und gleichzeitig landschaftlich ausgesprochen schön. Bewertung: 5/5</desc>
+  </wpt>
+  <wpt lat="38.8887361" lon="8.870678">
+    <name>Spiaggia di Campana Dune</name>
+    <desc>Ruhigerer Nachbarstrand von Su Giudeu bei Chia. Breiter heller Sand, Dünen und meist flaches Wasser. Gute Alternative, wenn Su Giudeu zu voll ist. Bewertung: 4/5</desc>
+  </wpt>
+  <wpt lat="38.9622423" lon="8.5969364">
+    <name>Spiaggia di Porto Pino</name>
+    <desc>Sehr langer Sandstrand im Südwesten mit beeindruckenden Dünen, Pinien und klarem Wasser. Viel Platz und gute Voraussetzungen für Familien. Bewertung: 5/5</desc>
+  </wpt>
+  <wpt lat="39.1299573" lon="9.4571943">
+    <name>Spiaggia di Porto Sa Ruxi</name>
+    <desc>Kleine, geschützte Bucht bei Villasimius mit feinem Sand, kristallklarem Wasser und mediterraner Vegetation. Sehr hübsch und besonders angenehm mit kleineren Kindern. Bewertung: 5/5</desc>
+  </wpt>
+  <wpt lat="39.2368008" lon="9.5721473">
+    <name>Spiaggia di Scoglio di Peppino</name>
+    <desc>Langer Sandstrand bei Costa Rei mit dem markanten Felsen 'Scoglio di Peppino'. Flaches, klares Wasser und viel Platz machen ihn zu einem starken Familienstrand. Bewertung: 5/5</desc>
+  </wpt>
+</gpx>

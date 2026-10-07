@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>Strände</name>
+    <Style id="icon-1521-FFEA00-nodesc-normal">
+      <IconStyle>
+        <color>ff00eaff</color>
+        <scale>1</scale>
+        <Icon>
+          <href>https://www.gstatic.com/mapspro/images/stock/503-wht-blank_maps.png</href>
+        </Icon>
+      </IconStyle>
+      <LabelStyle>
+        <scale>0</scale>
+      </LabelStyle>
+      <BalloonStyle>
+        <text><![CDATA[<h3>$[name]</h3>]]></text>
+      </BalloonStyle>
+    </Style>
+    <Style id="icon-1521-FFEA00-nodesc-highlight">
+      <IconStyle>
+        <color>ff00eaff</color>
+        <scale>1</scale>
+        <Icon>
+          <href>https://www.gstatic.com/mapspro/images/stock/503-wht-blank_maps.png</href>
+        </Icon>
+      </IconStyle>
+      <LabelStyle>
+        <scale>1</scale>
+      </LabelStyle>
+      <BalloonStyle>
+        <text><![CDATA[<h3>$[name]</h3>]]></text>
+      </BalloonStyle>
+    </Style>
+    <StyleMap id="icon-1521-FFEA00-nodesc">
+      <Pair>
+        <key>normal</key>
+        <styleUrl>#icon-1521-FFEA00-nodesc-normal</styleUrl>
+      </Pair>
+      <Pair>
+        <key>highlight</key>
+        <styleUrl>#icon-1521-FFEA00-nodesc-highlight</styleUrl>
+      </Pair>
+    </StyleMap>
+    <Placemark>
+      <name>Spiaggia La Pelosa</name>
+      <styleUrl>#icon-1521-FFEA00-nodesc</styleUrl>
+      <Point>
+        <coordinates>
+          8.2095124,40.9654818,0
+        </coordinates>
+      </Point>
+    </Placemark>
+    <Placemark>
+      <name>La Cinta Beach</name>
+      <styleUrl>#icon-1521-FFEA00-nodesc</styleUrl>
+      <Point>
+        <coordinates>
+          9.6710253,40.7851627,0
+        </coordinates>
+      </Point>
+    </Placemark>
+    <Placemark>
+      <name>Spiaggia di Budoni</name>
+      <styleUrl>#icon-1521-FFEA00-nodesc</styleUrl>
+      <Point>
+        <coordinates>
+          9.7170153,40.7058608,0
+        </coordinates>
+      </Point>
+    </Placemark>
+    <Placemark>
+      <name>Cala Fuili</name>
+      <styleUrl>#icon-1521-FFEA00-nodesc</styleUrl>
+      <Point>
+        <coordinates>
+          9.6249247,40.2560797,0
+        </coordinates>
+      </Point>
+    </Placemark>
+    <Placemark>
+      <name>Spiaggia di Balai</name>
+      <styleUrl>#icon-1521-FFEA00-nodesc</styleUrl>
+      <Point>
+        <coordinates>
+          8.4173087,40.8380144,0
+        </coordinates>
+      </Point>
+    </Placemark>
+    <Placemark>
+      <name>Spiaggia Poltu Di Li Cogghj</name>
+      <styleUrl>#icon-1521-FFEA00-nodesc</styleUrl>
+      <Point>
+        <coordinates>
+          9.5618716,41.0892306,0
+        </coordinates>
+      </Point>
+    </Placemark>
+    <Placemark>
+      <name>Spiaggia di Cala Spalmatore</name>
+      <styleUrl>#icon-1521-FFEA00-nodesc</styleUrl>
+      <Point>
+        <coordinates>
+          9.429353,41.2469173,0
+        </coordinates>
+      </Point>
+    </Placemark>
+    <Placemark>
+      <name>Spiaggia di Capo San Marco</name>
+      <styleUrl>#icon-1521-FFEA00-nodesc</styleUrl>
+      <Point>
+        <coordinates>
+          8.4388317,39.8697394,0
+        </coordinates>
+      </Point>
+    </Placemark>
+    <Placemark>
+      <name>Spiaggia di San Nicolò</name>
+      <styleUrl>#icon-1521-FFEA00-nodesc</styleUrl>
+      <Point>
+        <coordinates>
+          8.4115302,39.4198341,0
+        </coordinates>
+      </Point>
+    </Placemark>
+    <Placemark>
+      <name>Spiaggia di Simius</name>
+      <styleUrl>#icon-1521-FFEA00-nodesc</styleUrl>
+      <Point>
+        <coordinates>
+          9.530123,39.127758,0
+        </coordinates>
+      </Point>
+    </Placemark>
+  </Document>
+</kml>
