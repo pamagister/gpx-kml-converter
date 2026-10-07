@@ -198,6 +198,8 @@ def main(argv: list[str] | None = None) -> int:
     except (OSError, ValueError, RuntimeError) as error:
         logger.error(f"Processing failed: {error}")
         return 1
+    finally:
+        logger_manager.close()
 
 
 if __name__ == "__main__":

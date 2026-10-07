@@ -49,8 +49,7 @@ class LoggerManager:
 
     def _setup_logging(self):
         """Configure all logging handlers and formatters."""
-        # Clear any existing handlers
-        self.logger.handlers.clear()
+        self.close()
 
         # Set log level from config
         log_level = getattr(logging, self.config.app.log_level.value.upper())
@@ -118,6 +117,12 @@ class LoggerManager:
         """Disconnect GUI writer (useful when GUI closes)."""
         if self.gui_handler and self.gui_handler in self.logger.handlers:
             self.logger.removeHandler(self.gui_handler)
+
+    def close(self):
+        """Remove and close all handlers owned by this logger manager."""
+        for handler in self.logger.handlers[:]:
+            self.logger.removeHandler(handler)
+            handler.close()
 
     def get_logger(self, name: str = None) -> logging.Logger:
         """Get a logger instance.

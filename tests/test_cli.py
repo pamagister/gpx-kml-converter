@@ -8,6 +8,7 @@ import gpxpy
 from gpxpy.gpx import GPX, GPXWaypoint
 
 from gpx_kml_converter.cli.cli import _expand_inputs, main
+from gpx_kml_converter.core.logging import get_logger_manager
 
 
 class TestCli(unittest.TestCase):
@@ -242,6 +243,29 @@ class TestCli(unittest.TestCase):
                 [(point.latitude, point.longitude, point.name) for point in saved_gpx.waypoints],
                 [(51, 13, "Same POI"), (51, 13, "Same POI")],
             )
+
+    def test_cli_closes_log_file_after_processing(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            source = root / "new.gpx"
+
+            result = self._run_cli(
+                root,
+                [
+                    "--mode",
+                    "add-poi",
+                    "--lat",
+                    "48.8584",
+                    "--lon",
+                    "2.2945",
+                    "--name",
+                    "Eiffel Tower",
+                    str(source),
+                ],
+            )
+
+            self.assertEqual(result, 0)
+            self.assertIsNone(get_logger_manager().file_handler.stream)
 
     def test_add_poi_rejects_out_of_range_coordinates_without_modifying_source(self):
         with tempfile.TemporaryDirectory() as temp_dir:
