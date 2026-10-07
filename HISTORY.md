@@ -4,6 +4,16 @@ Changelog
 
 (unreleased)
 ------------
+- Beim Merge bleiben jetzt Beschreibungen aus GPX und KML erhalten – bei
+  Wegpunkten, Tracks, Routen und Trackpunkten. Trackpunkte mit
+  Beschreibung werden außerdem nicht durch die Geometrievereinfachung
+  entfernt. Das Bereinigen im Komprimierungsmodus bleibt unverändert.
+  [Paul Magister]
+
+
+1.1.1 (2026-10-07)
+------------------
+- Docs: Update HISTORY.md for release 1.1.1. [Paul Magister]
 - Add tests and example files for merging gpx and kml with only pois
   inside. [Paul Magister]
 - Add lxml runtime dependency. [Paul Magister]
