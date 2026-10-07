@@ -4,6 +4,16 @@ Changelog
 
 (unreleased)
 ------------
+- Das bestehende CLI unterstützt jetzt --mode add-poi. gpx-kml-converter
+  --mode add-poi --lat 51.0632 --lon 13.7421 \   --name "Historic Cafe"
+  --desc "Coffee shop" --sym Coffee --ele 115 input.gpx. [Paul Magister]
+- Update cli-config-gui, improve makefile. [Paul Magister]
+- Use the new and improved cli generator. [Paul Magister]
+
+
+1.0.9 (2026-10-02)
+------------------
+- Docs: Update HISTORY.md for release 1.0.9. [Paul Magister]
 - Use config-cli-gui in new version. [Paul Magister]
 - Implement douglas-peucker algorithm for track optimization improve
   cli. [Paul Magister]
