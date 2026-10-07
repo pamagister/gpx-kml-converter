@@ -312,14 +312,18 @@ class BaseGPXProcessor:
             return 0.0
 
     def _optimize_track_points(
-        self, track_points: list[GPXTrackPoint] | list[GPXWaypoint]
+        self,
+        track_points: list[GPXTrackPoint] | list[GPXWaypoint],
+        preserve_descriptions: bool = False,
     ) -> list[GPXTrackPoint]:
         """Simplify track points within a meter-based error tolerance."""
         if not track_points:
             return track_points
 
         try:
-            optimized_points = self._douglas_peucker(track_points)
+            optimized_points = self._douglas_peucker(
+                track_points, preserve_descriptions=preserve_descriptions
+            )
 
             # Clean and optimize each point
             for point in optimized_points:
@@ -343,7 +347,8 @@ class BaseGPXProcessor:
                     if hasattr(point, "type"):
                         point.type = None
                     point.comment = None
-                    point.description = None
+                    if not preserve_descriptions:
+                        point.description = None
                     point.source = None
                     point.link = None
                     point.link_text = None
@@ -365,7 +370,9 @@ class BaseGPXProcessor:
             raise
 
     def _douglas_peucker(
-        self, track_points: list[GPXTrackPoint] | list[GPXWaypoint]
+        self,
+        track_points: list[GPXTrackPoint] | list[GPXWaypoint],
+        preserve_descriptions: bool = False,
     ) -> list[GPXTrackPoint]:
         """Return copied points simplified using a local meter-based projection."""
         if len(track_points) <= 2 or self.tolerance == 0:
@@ -378,9 +385,19 @@ class BaseGPXProcessor:
         )
         project = Transformer.from_crs("EPSG:4326", local_crs, always_xy=True).transform
         projected = [project(point.longitude, point.latitude) for point in track_points]
-        keep = [False] * len(track_points)
-        keep[0] = keep[-1] = True
-        intervals = [(0, len(track_points) - 1)]
+        anchors = sorted(
+            {
+                0,
+                len(track_points) - 1,
+                *(
+                    index
+                    for index, point in enumerate(track_points)
+                    if preserve_descriptions and point.description is not None
+                ),
+            }
+        )
+        keep = [index in anchors for index in range(len(track_points))]
+        intervals = list(zip(anchors, anchors[1:]))
 
         while intervals:
             start, end = intervals.pop()
@@ -408,7 +425,9 @@ class BaseGPXProcessor:
 
         return [deepcopy(point) for point, should_keep in zip(track_points, keep) if should_keep]
 
-    def _optimize_waypoint(self, waypoint: GPXWaypoint) -> GPXWaypoint:
+    def _optimize_waypoint(
+        self, waypoint: GPXWaypoint, preserve_descriptions: bool = False
+    ) -> GPXWaypoint:
         """Optimize waypoint with error handling."""
         waypoint = deepcopy(waypoint)
         try:
@@ -428,7 +447,8 @@ class BaseGPXProcessor:
             if hasattr(waypoint, "type"):
                 waypoint.type = None
             waypoint.comment = None
-            waypoint.description = None
+            if not preserve_descriptions:
+                waypoint.description = None
             waypoint.source = None
             waypoint.link = None
             waypoint.link_text = None
@@ -514,11 +534,15 @@ class BaseGPXProcessor:
                 continue
         return generated_gpx_map
 
-    def _optimize_track(self, track):
+    def _optimize_track(self, track, preserve_descriptions: bool = False):
         new_track = gpxpy.gpx.GPXTrack()
         new_track.name = track.name
+        if preserve_descriptions:
+            new_track.description = track.description
         for segment in track.segments:
-            optimized_points = self._optimize_track_points(segment.points)
+            optimized_points = self._optimize_track_points(
+                segment.points, preserve_descriptions=preserve_descriptions
+            )
             if optimized_points:
                 new_segment = gpxpy.gpx.GPXTrackSegment()
                 new_segment.points.extend(optimized_points)
@@ -544,7 +568,7 @@ class BaseGPXProcessor:
                 # Merge tracks
                 # Process tracks
                 for track in gpx_obj.tracks:
-                    new_track = self._optimize_track(track)
+                    new_track = self._optimize_track(track, preserve_descriptions=True)
                     if new_track.segments:
                         merged_gpx.tracks.append(new_track)
                         total_tracks += 1
@@ -553,7 +577,10 @@ class BaseGPXProcessor:
                 for route in gpx_obj.routes:
                     new_route = gpxpy.gpx.GPXRoute()
                     new_route.name = route.name
-                    optimized_points = self._optimize_track_points(route.points)
+                    new_route.description = route.description
+                    optimized_points = self._optimize_track_points(
+                        route.points, preserve_descriptions=True
+                    )
                     if optimized_points:
                         new_route.points.extend(optimized_points)
                         merged_gpx.routes.append(new_route)
@@ -561,7 +588,9 @@ class BaseGPXProcessor:
 
                 # Merge waypoints
                 for waypoint in gpx_obj.waypoints:
-                    merged_gpx.waypoints.append(self._optimize_waypoint(waypoint))
+                    merged_gpx.waypoints.append(
+                        self._optimize_waypoint(waypoint, preserve_descriptions=True)
+                    )
                     total_waypoints += 1
                 self.logger.debug(
                     f"Merged contents of GPX object {gpx_obj.name or f'file_{idx + 1}'}"

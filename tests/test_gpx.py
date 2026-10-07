@@ -6,7 +6,13 @@ from datetime import datetime
 from pathlib import Path
 
 import gpxpy
-from gpxpy.gpx import GPXTrackPoint
+from gpxpy.gpx import (
+    GPXRoute,
+    GPXTrack,
+    GPXTrackPoint,
+    GPXTrackSegment,
+    GPXWaypoint,
+)
 
 from gpx_kml_converter.config.config import ConfigParameterManager
 from gpx_kml_converter.core.logging import initialize_logging
@@ -148,6 +154,55 @@ class TestGPXProcessor(unittest.TestCase):
             len(segment.points) for track in optimized_gpx.tracks for segment in track.segments
         )
         self.assertLess(optimized_point_count, original_point_count)
+
+    def test_merge_files_preserves_all_gpx_descriptions(self):
+        source = gpxpy.gpx.GPX()
+        source.waypoints.append(
+            GPXWaypoint(
+                latitude=50.0,
+                longitude=10.0,
+                name="Waypoint",
+                description="Waypoint description",
+            )
+        )
+
+        track = GPXTrack(name="Track", description="Track description")
+        track_segment = GPXTrackSegment()
+        track_segment.points.append(GPXTrackPoint(latitude=50.0, longitude=10.0))
+        track_point = GPXTrackPoint(latitude=50.0001, longitude=10.0001)
+        track_point.description = "Track point description"
+        track_segment.points.append(track_point)
+        track_segment.points.append(GPXTrackPoint(latitude=50.0002, longitude=10.0002))
+        track.segments.append(track_segment)
+        source.tracks.append(track)
+
+        route = GPXRoute(name="Route", description="Route description")
+        route_point = GPXTrackPoint(latitude=50.1, longitude=10.1)
+        route_point.description = "Route point description"
+        route.points.append(route_point)
+        source.routes.append(route)
+
+        self.processor.input = [source]
+        self.processor.include_elevation = False
+        self.processor.tolerance = 1000
+        merged_gpx = next(iter(self.processor.merge_files().values()))
+
+        self.assertEqual(merged_gpx.waypoints[0].description, "Waypoint description")
+        self.assertEqual(merged_gpx.tracks[0].description, "Track description")
+        self.assertEqual(
+            merged_gpx.tracks[0].segments[0].points[0].description,
+            None,
+        )
+        self.assertEqual(
+            len(merged_gpx.tracks[0].segments[0].points),
+            3,
+        )
+        self.assertEqual(
+            merged_gpx.tracks[0].segments[0].points[1].description,
+            "Track point description",
+        )
+        self.assertEqual(merged_gpx.routes[0].description, "Route description")
+        self.assertEqual(merged_gpx.routes[0].points[0].description, "Route point description")
 
     def test_save_gpx_file(self):
         """

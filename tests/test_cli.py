@@ -88,6 +88,25 @@ class TestCli(unittest.TestCase):
         self.assertIn("Brandinchi Beach", merged_names)
         self.assertIn("Spiaggia La Pelosa", merged_names)
         self.assertIn("La Cinta Beach", merged_names)
+        brandinchi = next(
+            point for point in merged_gpx.waypoints if point.name == "Brandinchi Beach"
+        )
+        self.assertIn("Little Tahiti", brandinchi.description)
+
+    def test_cli_merge_preserves_kml_description(self):
+        cities_path = Path(__file__).resolve().parents[1] / "examples" / "POIs" / "cities.kml"
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            output_dir = Path(temp_dir) / "output"
+            result = self._run_cli(
+                Path(temp_dir),
+                ["--mode", "merge", "--output", str(output_dir), str(cities_path)],
+            )
+            merged_gpx = gpxpy.parse((output_dir / "merged_output.gpx").read_text(encoding="utf-8"))
+
+        self.assertEqual(result, 0)
+        olbia = next(point for point in merged_gpx.waypoints if point.name == "Olbia")
+        self.assertEqual(olbia.description, "Dies ist eine Beschreibung")
 
     def test_add_poi_updates_existing_gpx_and_preserves_existing_waypoints(self):
         with tempfile.TemporaryDirectory() as temp_dir:

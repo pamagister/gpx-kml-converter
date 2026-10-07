@@ -89,7 +89,7 @@ The underlying processing engine includes sophisticated optimization techniques:
 
 * **Douglas–Peucker Simplification:** Compression and merging simplify each track segment with a configurable tolerance in meters (10 m by default), preserving segment boundaries and endpoints while limiting the geometric deviation. 🤏
 
-* **Metadata Cleaning:** Irrelevant metadata (e.g., time, extensions, comments, descriptions, symbols) is stripped from points, tracks, and routes to further reduce file size and declutter the data. 🧼
+* **Metadata Cleaning:** Compression strips irrelevant metadata (e.g., time, extensions, comments, descriptions, symbols) from points, tracks, and routes to further reduce file size; merging preserves descriptions. 🧼
 
 * **Elevation Adjustment:**
 
