@@ -4,6 +4,14 @@ Changelog
 
 (unreleased)
 ------------
+- Add tests and example files for merging gpx and kml with only pois
+  inside. [Paul Magister]
+- Add lxml runtime dependency. [Paul Magister]
+
+
+1.1.0 (2026-10-07)
+------------------
+- Docs: Update HISTORY.md for release 1.1.0. [Paul Magister]
 - Das bestehende CLI unterstützt jetzt --mode add-poi. gpx-kml-converter
   --mode add-poi --lat 51.0632 --lon 13.7421 \   --name "Historic Cafe"
   --desc "Coffee shop" --sym Coffee --ele 115 input.gpx. [Paul Magister]
