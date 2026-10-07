@@ -12,6 +12,7 @@ dependencies = [
     "fastkml>=1.1.0",
     "geopandas>=1.1.0",
     "gpxpy>=1.6.2",
+    "lxml>=5.0.0",
     "matplotlib>=3.10.3",
     "pyproj>=3.7.0",
     "shapely>=2.1.1",
@@ -53,7 +54,7 @@ build-backend = "setuptools.build_meta"
 write_to = "src/gpx_kml_converter/_version.py"
 
 [tool.deptry]
-pep621_dev_dependency_groups = ["dev", "docs"]
+per_rule_ignores = { DEP002 = ["lxml"] }
 
 [tool.ruff]
 line-length = 100
