@@ -91,13 +91,9 @@ prepare-release:
 	rm -rf $(RELEASE_DIR)
 	mkdir -p $(RELEASE_DIR)
 	cp config.yaml $(RELEASE_DIR)/
-	cp anniversaries.ini $(RELEASE_DIR)/
-	cp locations_en.ini $(RELEASE_DIR)/
-	cp locations_de.ini $(RELEASE_DIR)/
 	cp README.md $(RELEASE_DIR)/
 	cp -R res $(RELEASE_DIR)/
 	cp -R docs $(RELEASE_DIR)/
-	cp -R images $(RELEASE_DIR)/
 
 
 # ==========================
