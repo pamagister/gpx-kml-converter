@@ -4,6 +4,12 @@ Changelog
 
 (unreleased)
 ------------
+- Fix github action tests for macos. [Paul Magister]
+
+
+1.1.4 (2026-10-09)
+------------------
+- Docs: Update HISTORY.md for release 1.1.4. [Paul Magister]
 - Add AGENTS.md and harmonize docs generation. [Paul Magister]
 - Add AGENTS.md. [Paul Magister]
 - Generate user docs. [Paul Magister]
