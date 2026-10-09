@@ -197,3 +197,4 @@ cython_debug/
 /.idea/gpx-kml-converter.iml
 /.idea/inspectionProfiles/profiles_settings.xml
 /.idea/inspectionProfiles/Project_Default.xml
+/src/gpx_kml_converter/_version.py
