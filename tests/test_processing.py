@@ -143,7 +143,7 @@ class TestProcessingService(unittest.TestCase):
             os.chdir(original_directory)
 
         output_path = next(iter(outputs))
-        self.assertEqual(output_path.parent, Path(self.temp_dir.name))
+        self.assertEqual(output_path.parent.resolve(), Path(self.temp_dir.name).resolve())
         self.assertRegex(output_path.name, r"^gpx_processed_\d{4}-\d{2}-\d{2}_\d{6}\.gpx$")
         self.assertEqual(
             gpxpy.parse(output_path.read_text(encoding="utf-8")).waypoints[0].name, "Start"
