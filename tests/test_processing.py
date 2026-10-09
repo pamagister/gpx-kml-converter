@@ -58,6 +58,47 @@ class TestProcessingService(unittest.TestCase):
         self.assertEqual(saved_points[-1].longitude, 10.001)
         self.assertEqual(len(source.tracks[0].segments[0].points), 3)
 
+    def test_generated_gpx_can_be_reused_in_a_second_processing_stage(self):
+        source = GPX()
+        track = GPXTrack(name="Reusable Track")
+        segment = GPXTrackSegment()
+        segment.points.extend(
+            [
+                GPXTrackPoint(latitude=50.0, longitude=10.0),
+                GPXTrackPoint(latitude=50.00001, longitude=10.0005),
+                GPXTrackPoint(latitude=50.0, longitude=10.001),
+            ]
+        )
+        track.segments.append(segment)
+        source.tracks.append(track)
+
+        first_stage = process_gpx_files(
+            [source],
+            mode="compress",
+            output=self.output_dir / "first-stage",
+            tolerance=10,
+            date_format="%Y-%m-%d",
+            elevation=False,
+            logger=self.logger,
+        )
+        first_stage_path, first_stage_gpx = next(iter(first_stage.items()))
+
+        second_stage = process_gpx_files(
+            [first_stage_gpx],
+            mode="compress",
+            output=self.output_dir / "second-stage",
+            tolerance=10,
+            date_format="%Y-%m-%d",
+            elevation=False,
+            logger=self.logger,
+        )
+
+        self.assertTrue(first_stage_path.is_file())
+        second_stage_path = next(iter(second_stage))
+        saved_gpx = gpxpy.parse(second_stage_path.read_text(encoding="utf-8"))
+        self.assertEqual(saved_gpx.tracks[0].name, "Reusable Track")
+        self.assertEqual(len(saved_gpx.tracks[0].segments[0].points), 2)
+
     def test_merge_preserves_waypoints_in_saved_gpx(self):
         first = GPX()
         first.waypoints.append(

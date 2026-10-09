@@ -3,15 +3,18 @@
 
 Once the GUI is launched, you can:
 
-1.  **Open Files:** Click "Open Files" to add GPX/KML files to the input list. ➕📁
-
-2.  **Select Files (Optional):** Click on files in the input list to select them for specific processing. If no files are selected, all loaded input files will be processed. ✅
-
-3.  **Choose a Processing Mode:** Click one of the processing buttons ("Compress," "Merge," "Extract POIs") to start the operation. ▶️
-
-4.  **Monitor Progress:** Observe the log output and the progress bar. ⏳
-
-5.  **View Results:** Check the "Generated Files" list for your processed outputs. Double-click an output file to open it or navigate to its containing directory. 🌟
+1. **Open Files:** Add GPX, KML, or ZIP files to the input list. Newly opened
+   files are selected, and **Select All Inputs** selects the entire workspace.
+2. **Choose the processing scope:** Select one or more inputs in the list.
+   Processing an empty selection uses all loaded inputs.
+3. **Choose a processing mode:** Use **Compress Files**, **Merge Files**, or
+   **Extract POIs from Tracks**.
+4. **Inspect results:** Processed files appear in **Generated Files**. Double-
+   click a result to open it in the system's default application.
+5. **Continue processing:** Select generated results and choose **Use Selected
+   Results as Inputs**. Results stay in the generated list and are added to the
+   input list for another processing step.
+6. **Monitor progress:** Observe the progress indicator and log output.
 
 ## Main Window Overview
 

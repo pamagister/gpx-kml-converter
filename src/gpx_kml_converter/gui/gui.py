@@ -111,13 +111,48 @@ class GuiLogWriter:
         pass
 
 
+class TextNavigationToolbar(NavigationToolbar2Tk):
+    """Matplotlib toolbar with text controls instead of platform-dependent icons."""
+
+    toolitems = tuple(
+        (text, tooltip, None, callback)
+        for text, tooltip, _image_file, callback in NavigationToolbar2Tk.toolitems
+    )
+
+    def _Button(self, text, image_file, toggle, command):
+        if toggle:
+            variable = tk.IntVar(master=self)
+            button = tk.Checkbutton(
+                master=self,
+                text=text,
+                command=command,
+                indicatoron=False,
+                variable=variable,
+                offrelief="flat",
+                overrelief="groove",
+                borderwidth=1,
+            )
+            button.var = variable
+        else:
+            button = tk.Button(
+                master=self,
+                text=text,
+                command=command,
+                relief="flat",
+                overrelief="groove",
+                borderwidth=1,
+            )
+        button.pack(side=tk.LEFT)
+        return button
+
+
 class MainGui:
     """Main GUI application class."""
 
     processing_modes = [
-        ("compress", "⏬", "Compress Files"),
-        ("merge", "🔂", "Merge Files"),
-        ("extract-pois", "📍", "Extract POIs from Tracks"),
+        ("compress", "Compress Files"),
+        ("merge", "Merge Files"),
+        ("extract-pois", "Extract POIs from Tracks"),
     ]
 
     def __init__(self, root):
@@ -222,9 +257,9 @@ class MainGui:
         input_file_frame = ttk.LabelFrame(files_horizontal_paned, text="Input Files")
         files_horizontal_paned.add(input_file_frame, weight=1)
 
-        # Button frame (middle in files panel) - fixed width 20 pixels
+        # Keep enough room for readable controls between the file lists.
         button_frame = ttk.Frame(files_horizontal_paned)
-        button_frame.configure(width=20)
+        button_frame.configure(width=210)
         files_horizontal_paned.add(button_frame, weight=0)
 
         # Output files frame (right in files panel)
@@ -270,6 +305,12 @@ class MainGui:
 
     def _build_input_file_list(self, parent_frame):
         """Build the input file listbox with scrollbars."""
+        controls = ttk.Frame(parent_frame)
+        controls.pack(fill=tk.X, padx=4, pady=4)
+        ttk.Button(controls, text="Select All Inputs", command=self._select_all_input_files).pack(
+            side=tk.LEFT
+        )
+
         self.input_file_listbox = self.__build_listbox(
             parent_frame, lambda event: self._on_file_selection(event, self.gpx_input)
         )
@@ -279,6 +320,14 @@ class MainGui:
 
     def _build_output_file_list(self, parent_frame):
         """Build the output file listbox with scrollbars."""
+        controls = ttk.Frame(parent_frame)
+        controls.pack(fill=tk.X, padx=4, pady=4)
+        ttk.Button(
+            controls,
+            text="Use Selected Results as Inputs",
+            command=self._use_selected_outputs_as_inputs,
+        ).pack(side=tk.LEFT)
+
         self.output_file_listbox = self.__build_listbox(
             parent_frame, lambda event: self._on_file_selection(event, self.gpx_output)
         )
@@ -290,27 +339,27 @@ class MainGui:
         """Build the button panel with fixed width."""
         # Configure fixed width
         parent_frame.pack_propagate(False)
-        parent_frame.configure(width=30)
+        parent_frame.configure(width=210)
 
-        open_button = ttk.Button(parent_frame, text="📂", command=self._open_files)
+        open_button = ttk.Button(parent_frame, text="Open Files", command=self._open_files)
         ToolTip(open_button, "Open Files")
         open_button.pack(pady=8, fill=tk.X)
 
         self.run_buttons = {}
-        for mode, label, tooltip in self.processing_modes:
+        for mode, label in self.processing_modes:
             button = ttk.Button(
                 parent_frame, text=label, command=partial(self._run_processing, mode=mode)
             )
             button.pack(pady=1, fill=tk.X)
-            ToolTip(button, tooltip)
+            ToolTip(button, label)
             self.run_buttons[mode] = button
 
         self.clear_files_button = ttk.Button(
             parent_frame,
-            text="🗑️",
+            text="Clear Workspace",
             command=self._clear_files,
         )
-        ToolTip(self.clear_files_button, "Clear Files")
+        ToolTip(self.clear_files_button, "Clear all input and generated files")
         self.clear_files_button.pack(pady=8, fill=tk.X)
 
         self.progress = ttk.Progressbar(parent_frame, mode="indeterminate")
@@ -358,7 +407,7 @@ class MainGui:
         self.canvas_widget.grid(row=0, column=0, sticky="nsew")
 
         # Add Matplotlib toolbar
-        self.toolbar = NavigationToolbar2Tk(self.canvas, parent_frame, pack_toolbar=False)
+        self.toolbar = TextNavigationToolbar(self.canvas, parent_frame, pack_toolbar=False)
         self.toolbar.update()
         self.toolbar.grid(row=1, column=0, sticky="ew")  # Position toolbar below canvas
         self.canvas_widget.config(cursor="hand2")  # Change cursor when hovering over plot
@@ -494,8 +543,8 @@ class MainGui:
         file_menu.add_command(label="Open...", command=self._open_files)
         file_menu.add_separator()
         # Create Run menu options dynamically
-        for mode, _, tooltip in self.processing_modes:
-            file_menu.add_command(label=tooltip, command=partial(self._run_processing, mode=mode))
+        for mode, label in self.processing_modes:
+            file_menu.add_command(label=label, command=partial(self._run_processing, mode=mode))
         file_menu.add_separator()
         file_menu.add_command(label="Exit", command=self._on_closing)
 
@@ -544,6 +593,51 @@ class MainGui:
         self.logger.info("All file file lists cleared")
         self._clear_metadata_and_plot()  # Clear plot and metadata when output files are cleared
 
+    def _select_all_input_files(self):
+        """Select every loaded input so batch processing is explicit and quick."""
+        self.input_file_listbox.selection_set(0, tk.END)
+
+    @staticmethod
+    def _selected_paths(file_map: dict[Path, GPX], selected_indices: tuple[int, ...]) -> list[Path]:
+        """Resolve listbox positions to paths; an empty selection means all files."""
+        paths = list(file_map)
+        if not selected_indices:
+            return paths
+        return [paths[index] for index in selected_indices if 0 <= index < len(paths)]
+
+    @staticmethod
+    def _add_results_to_inputs(
+        input_files: dict[Path, GPX], output_files: dict[Path, GPX], selected_paths: list[Path]
+    ) -> list[Path]:
+        """Add selected results once and return paths that were newly added."""
+        added_paths = []
+        for path in selected_paths:
+            if path not in input_files:
+                input_files[path] = output_files[path]
+                added_paths.append(path)
+        return added_paths
+
+    def _use_selected_outputs_as_inputs(self):
+        """Add selected generated files to the input workspace for another processing step."""
+        selected_indices = self.output_file_listbox.curselection()
+        if not selected_indices:
+            messagebox.showwarning("Warning", "Select at least one generated result first.")
+            return
+        selected_paths = self._selected_paths(self.gpx_output, selected_indices)
+        if not selected_paths:
+            return
+
+        added_paths = self._add_results_to_inputs(self.gpx_input, self.gpx_output, selected_paths)
+        for path in added_paths:
+            self.input_file_listbox.insert(tk.END, f"{path.name} ({path})")
+
+        input_indices = [list(self.gpx_input).index(path) for path in selected_paths]
+        self.input_file_listbox.selection_clear(0, tk.END)
+        for index in input_indices:
+            self.input_file_listbox.selection_set(index)
+        self._update_selected_file_display(self.input_file_listbox, self.gpx_input)
+        self.logger.info(f"Added {len(selected_paths)} generated result(s) to the input workspace.")
+
     def _remove_selected_input_files(self):
         """Remove selected files from the input file list."""
         selected_indices = self.input_file_listbox.curselection()
@@ -551,16 +645,12 @@ class MainGui:
             messagebox.showwarning("Warning", "No files selected to remove!")
             return
 
-        # Get paths of selected files to remove from gpx_input dict
-        paths_to_remove = []
+        paths_to_remove = self._selected_paths(self.gpx_input, selected_indices)
         for i in reversed(selected_indices):
-            listbox_item = self.input_file_listbox.get(i)
-            # Assuming listbox item format is "filename (filepath)"
-            path_str = listbox_item.split(" (")[-1].rstrip(")")
-            paths_to_remove.append(Path(path_str))
+            path = list(self.gpx_input)[i]
 
             # If the removed file was the one currently displayed, clear metadata/plot
-            if Path(path_str) == self._last_selected_file_path:
+            if path == self._last_selected_file_path:
                 self._clear_metadata_and_plot()
             self.input_file_listbox.delete(i)
 
@@ -604,9 +694,9 @@ class MainGui:
         selected_indices = listbox_widget.curselection()
         if selected_indices:
             index = selected_indices[0]
-            listbox_item = listbox_widget.get(index)
-            file_path_str = listbox_item.split(" (")[-1].rstrip(")")
-            self._parse_and_display_file(Path(file_path_str), gpx_dict_source)
+            paths = list(gpx_dict_source)
+            if index < len(paths):
+                self._parse_and_display_file(paths[index], gpx_dict_source)
         else:
             pass
             # do not clear map data if focus is lost
@@ -619,9 +709,10 @@ class MainGui:
         if selection_index == -1:  # No item clicked
             return
 
-        listbox_item = event.widget.get(selection_index)
-        file_path_str = listbox_item.split(" (")[-1].rstrip(")")
-        file_path = Path(file_path_str)
+        paths = list(gpx_dict_source)
+        if selection_index >= len(paths):
+            return
+        file_path = paths[selection_index]
 
         if not file_path.exists():
             self.logger.error(f"File not found: {file_path}")
@@ -679,34 +770,18 @@ class MainGui:
 
         self.logger.info(f"Loaded {new_files_loaded} new GPX files.")
         if new_files_loaded > 0:
-            self.input_file_listbox.selection_clear(0, tk.END)
-            self.input_file_listbox.selection_set(0)
+            self._select_all_input_files()
             self._update_selected_file_display(self.input_file_listbox, self.gpx_input)
 
     def _run_processing(self, mode: str):
         """Run the selected processing mode in a separate thread."""
-        selected_indices = self.input_file_listbox.curselection()
-        if not selected_indices:
-            messagebox.showwarning("Warning", "Please select at least one input file to process.")
+        selected_paths = self._selected_paths(
+            self.gpx_input, self.input_file_listbox.curselection()
+        )
+        if not selected_paths:
+            messagebox.showwarning("Warning", "Load at least one input file to process.")
             return
-
-        selected_gpx_objects = []
-        selected_file_paths = []  # Keep track of original paths for output naming if needed
-        for index in selected_indices:
-            listbox_item = self.input_file_listbox.get(index)
-            file_path_str = listbox_item.split(" (")[-1].rstrip(")")
-            file_path = Path(file_path_str)
-            if file_path in self.gpx_input:
-                selected_gpx_objects.append(self.gpx_input[file_path])
-                selected_file_paths.append(file_path)
-            else:
-                self.logger.warning(
-                    f"Selected file {file_path.name} not found in loaded GPX data. Skipping."
-                )
-
-        if not selected_gpx_objects:
-            messagebox.showwarning("Warning", "No valid GPX objects selected for processing.")
-            return
+        selected_gpx_objects = [self.gpx_input[path] for path in selected_paths]
 
         for button in self.run_buttons.values():
             button.config(state=tk.DISABLED)
@@ -714,8 +789,8 @@ class MainGui:
         self.progress.start()
         self.logger.info(f"Starting '{mode}' processing for {len(selected_gpx_objects)} files...")
 
-        # Clear previous output files and listbox
-        # self.gpx_output.clear()
+        # Keep the output model in sync with the results shown in the listbox.
+        self.gpx_output.clear()
         self.output_file_listbox.delete(0, tk.END)
         self._clear_metadata_and_plot()
 
