@@ -11,7 +11,7 @@ from gpx_kml_converter.application.processing import (
     process_gpx_files,
 )
 from gpx_kml_converter.config.config import ConfigParameterManager
-from gpx_kml_converter.core.base import GeoFileManager
+from gpx_kml_converter.core.file_loader import GeoFileManager
 from gpx_kml_converter.core.gpx_file import add_poi_to_gpx
 from gpx_kml_converter.core.logging import initialize_logging
 

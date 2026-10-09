@@ -6,7 +6,8 @@ from pathlib import Path
 
 from gpxpy.gpx import GPX
 
-from gpx_kml_converter.core.base import BaseGPXProcessor
+from gpx_kml_converter.core.elevation import ElevationProvider
+from gpx_kml_converter.core.processor import BaseGPXProcessor
 
 PROCESSING_MODES = ("compress", "merge", "extract-pois")
 
@@ -20,6 +21,7 @@ def process_gpx_files(
     date_format: str,
     elevation: bool,
     logger: logging.Logger,
+    elevation_provider: ElevationProvider | None = None,
 ) -> dict[Path, GPX]:
     """Run one of the shared GPX operations and return its generated files."""
     if mode not in PROCESSING_MODES:
@@ -32,6 +34,7 @@ def process_gpx_files(
         date_format=date_format,
         elevation=elevation,
         logger=logger,
+        elevation_provider=elevation_provider,
     )
     operation = {
         "compress": processor.compress_files,

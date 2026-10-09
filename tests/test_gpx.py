@@ -19,6 +19,14 @@ from gpx_kml_converter.core.logging import initialize_logging
 from src.gpx_kml_converter.core.base import BaseGPXProcessor, GeoFileManager
 
 
+class FixedElevationProvider:
+    def __init__(self, elevation):
+        self.elevation = elevation
+
+    def get_elevation(self, latitude, longitude):
+        return self.elevation
+
+
 class TestGPXProcessor(unittest.TestCase):
     """
     Unit tests for the BaseGPXProcessor class using kuhkopfsteig.gpx.
@@ -49,6 +57,7 @@ class TestGPXProcessor(unittest.TestCase):
         self.processor = BaseGPXProcessor(
             input_=self.gpx_object,
             output=str(self.output_dir),
+            elevation=False,
             logger=self.logger,
         )
 
@@ -64,34 +73,30 @@ class TestGPXProcessor(unittest.TestCase):
             shutil.rmtree(temp_extract_dir)
 
     def test_get_adjusted_elevation(self):
-        """
-        Test the _get_adjusted_elevation private method.
-        This method relies on srtm data, so we can't mock it easily
-        without significant setup. We'll test with a known point and expect
-        a rounded float output. The exact value will depend on SRTM data.
-        """
-        # Create a dummy point for testing
-        test_point = GPXTrackPoint(latitude=50.91605, longitude=14.07259, elevation=100.0)
-        adjusted_elevation = self.processor._get_adjusted_elevation(test_point)
-
-        self.assertIsInstance(adjusted_elevation, int)
-        # Assuming SRTM data is available and provides a value, it should be around 330-350m
-        self.assertGreater(
-            adjusted_elevation, 124
-        )  # Placeholder: Expect elevation to be adjusted, e.g., > 300m
-        self.assertLess(
-            adjusted_elevation, 400
-        )  # Placeholder: Expect elevation to be adjusted, e.g., < 400m
-        self.assertNotEqual(adjusted_elevation, 100.0)  # Should be adjusted from original
-
-        # Test point with no initial elevation
-        test_point_no_elevation = GPXTrackPoint(latitude=50.91605, longitude=14.07259)
-        adjusted_elevation_no_initial = self.processor._get_adjusted_elevation(
-            test_point_no_elevation
+        point = GPXTrackPoint(latitude=50.91605, longitude=14.07259, elevation=100.04)
+        processor = BaseGPXProcessor(
+            input_=[gpxpy.gpx.GPX()],
+            logger=self.logger,
+            elevation_provider=FixedElevationProvider(321.06),
         )
-        self.assertIsInstance(adjusted_elevation_no_initial, int)
-        self.assertGreater(adjusted_elevation_no_initial, 124)
-        self.assertLess(adjusted_elevation_no_initial, 400)
+        self.assertEqual(processor._get_adjusted_elevation(point), 321.1)
+
+        offline_processor = BaseGPXProcessor(
+            input_=[gpxpy.gpx.GPX()],
+            logger=self.logger,
+            elevation_provider=FixedElevationProvider(None),
+        )
+        self.assertEqual(offline_processor._get_adjusted_elevation(point), 100.0)
+        point_without_elevation = GPXTrackPoint(latitude=50.0, longitude=10.0)
+        self.assertEqual(offline_processor._get_adjusted_elevation(point_without_elevation), 0)
+
+        disabled_processor = BaseGPXProcessor(
+            input_=[gpxpy.gpx.GPX()],
+            logger=self.logger,
+            elevation=False,
+            elevation_provider=FixedElevationProvider(321.06),
+        )
+        self.assertIsNone(disabled_processor._get_adjusted_elevation(point))
 
     def test_calculate_distance(self):
         """
@@ -230,6 +235,18 @@ class TestGPXProcessor(unittest.TestCase):
             loaded = self.geo_file_manager.load_files(archives)
 
         self.assertEqual(len(loaded), 2)
+
+    def test_load_files_skips_malformed_gpx_and_corrupt_zip(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            malformed_gpx = root / "broken.gpx"
+            malformed_gpx.write_text("<gpx><trk>", encoding="utf-8")
+            corrupt_zip = root / "broken.zip"
+            corrupt_zip.write_text("not a zip archive", encoding="utf-8")
+
+            loaded = self.geo_file_manager.load_files([malformed_gpx, corrupt_zip])
+
+        self.assertEqual(loaded, {})
 
 
 if __name__ == "__main__":

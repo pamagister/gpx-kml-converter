@@ -29,7 +29,7 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolb
 
 from gpx_kml_converter.application.processing import process_gpx_files
 from gpx_kml_converter.config.config import ConfigParameterManager
-from gpx_kml_converter.core.base import GeoFileManager
+from gpx_kml_converter.core.file_loader import GeoFileManager
 from gpx_kml_converter.core.gpx_plotter import GPXPlotter
 from gpx_kml_converter.core.logging import (
     connect_gui_logging,

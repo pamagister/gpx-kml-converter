@@ -9,6 +9,11 @@ from gpxpy.gpx import GPX, GPXTrack, GPXTrackPoint, GPXTrackSegment, GPXWaypoint
 from gpx_kml_converter.application.processing import process_gpx_files
 
 
+class UnavailableElevationProvider:
+    def get_elevation(self, latitude, longitude):
+        return None
+
+
 class TestProcessingService(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
@@ -103,6 +108,28 @@ class TestProcessingService(unittest.TestCase):
         self.assertEqual(saved_gpx.waypoints[0].name, "Track_Start_POI_001")
         self.assertEqual(saved_gpx.waypoints[0].latitude, 47.0)
         self.assertIsNone(saved_gpx.waypoints[0].elevation)
+
+    def test_offline_elevation_fallback_survives_processing_round_trip(self):
+        source = GPX()
+        track = GPXTrack(name="Known elevation")
+        segment = GPXTrackSegment()
+        segment.points.append(GPXTrackPoint(latitude=47.0, longitude=8.0, elevation=423.26))
+        track.segments.append(segment)
+        source.tracks.append(track)
+
+        outputs = process_gpx_files(
+            [source],
+            mode="compress",
+            output=self.output_dir,
+            tolerance=10,
+            date_format="%Y-%m-%d",
+            elevation=True,
+            logger=self.logger,
+            elevation_provider=UnavailableElevationProvider(),
+        )
+
+        saved_gpx = gpxpy.parse(next(iter(outputs)).read_text(encoding="utf-8"))
+        self.assertEqual(saved_gpx.tracks[0].segments[0].points[0].elevation, 423.3)
 
     def test_unknown_mode_is_rejected(self):
         with self.assertRaisesRegex(ValueError, "Unsupported processing mode"):
