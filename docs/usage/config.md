@@ -23,14 +23,14 @@ The actual configuration is stored in [`config.yaml`](../../config.yaml). You ca
 
 ## Category "cli" {#cli}
 
-| Name      | Type  | Description                                              | Default    | Choices                                          |
-|-----------|-------|----------------------------------------------------------|------------|--------------------------------------------------|
-| input     | str   | One or more input paths (GPX, KML, ZIP, or directory)    | ''         | -                                                |
+| Name      | Type  | Description                                                           | Default    | Choices                                          |
+|-----------|-------|-----------------------------------------------------------------------|------------|--------------------------------------------------|
+| input     | str   | One or more input paths (GPX, KML, ZIP, or directory)                 | ''         | -                                                |
 | output    | str   | Output directory override; 'auto' uses mode-specific output locations | 'auto'     | -                                                |
-| tolerance | float | Douglas-Peucker simplification tolerance in meters       | 10.0       | -                                                |
-| mode      | str   | Processing operation                                     | 'compress' | ['compress', 'merge', 'extract-pois', 'add-poi'] |
-| recursive | bool  | Search input directories recursively                     | False      | [True, False]                                    |
-| elevation | bool  | Include elevation data in waypoints                      | True       | [True, False]                                    |
+| tolerance | float | Douglas-Peucker simplification tolerance in meters                    | 10.0       | -                                                |
+| mode      | str   | Processing operation                                                  | 'compress' | ['compress', 'merge', 'extract-pois', 'add-poi'] |
+| recursive | bool  | Search input directories recursively                                  | False      | [True, False]                                    |
+| elevation | bool  | Include elevation data in waypoints                                   | True       | [True, False]                                    |
 
 ## Category "gui" {#gui}
 
@@ -42,3 +42,4 @@ The actual configuration is stored in [`config.yaml`](../../config.yaml). You ca
 | log_window_height | int  | Height of the log window in pixels         | 200     | -                         |
 | auto_scroll_log   | bool | Automatically scroll to newest log entries | True    | [True, False]             |
 | max_log_lines     | int  | Maximum number of log lines to keep in GUI | 1000    | -                         |
+

@@ -59,5 +59,15 @@ To create a new file, pass a not-yet-existing `.gpx` path as the input:
 gpx-kml-converter --mode add-poi --lat 48.8584 --lon 2.2945 \\
   --name "Eiffel Tower" new-pois.gpx
 ```
+
+## Notes on --output parameter
+
+By default, `compress` writes each GPX result beside its source as
+`<source-stem>_processed_<date-time>.gpx`. A ZIP member is written under a
+sibling directory named after the archive without its extension. `merge`
+writes `gpx_processed_<date-time>.gpx` in the current directory. A custom
+`--output` directory overrides these destinations. Existing output names are
+overwritten; duplicate names within one batch receive a numeric suffix.
+
 """
     )

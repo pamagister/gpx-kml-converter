@@ -14,17 +14,17 @@ python -m gpx_kml_converter [OPTIONS] <input>
 
 ## Options
 
-| Option        | Type  | Description                                              | Default    | Choices                                          |
-|---------------|-------|----------------------------------------------------------|------------|--------------------------------------------------|
-| --config      | str   | Path to configuration file                               | -          | -                                                |
-| -v, --verbose | bool  | Enable debug logging                                     | False      | [True, False]                                    |
-| -q, --quiet   | bool  | Show warnings and errors only                            | False      | [True, False]                                    |
-| `input`       | str   | One or more input paths (GPX, KML, ZIP, or directory)    | *required* | -                                                |
-| `--output`    | str   | Override the mode-specific output directory | 'auto'     | -                                                |
-| `--tolerance` | float | Douglas-Peucker simplification tolerance in meters       | 10.0       | -                                                |
-| `--mode`      | str   | Processing operation                                     | 'compress' | ['compress', 'merge', 'extract-pois', 'add-poi'] |
-| `--recursive` | bool  | Search input directories recursively                     | False      | [True, False]                                    |
-| `--elevation` | bool  | Include elevation data in waypoints                      | True       | [True, False]                                    |
+| Option        | Type  | Description                                                           | Default    | Choices                                          |
+|---------------|-------|-----------------------------------------------------------------------|------------|--------------------------------------------------|
+| --config      | str   | Path to configuration file                                            | -          | -                                                |
+| -v, --verbose | bool  | Enable debug logging                                                  | False      | [True, False]                                    |
+| -q, --quiet   | bool  | Show warnings and errors only                                         | False      | [True, False]                                    |
+| `input`       | str   | One or more input paths (GPX, KML, ZIP, or directory)                 | *required* | -                                                |
+| `--output`    | str   | Output directory override; 'auto' uses mode-specific output locations | 'auto'     | -                                                |
+| `--tolerance` | float | Douglas-Peucker simplification tolerance in meters                    | 10.0       | -                                                |
+| `--mode`      | str   | Processing operation                                                  | 'compress' | ['compress', 'merge', 'extract-pois', 'add-poi'] |
+| `--recursive` | bool  | Search input directories recursively                                  | False      | [True, False]                                    |
+| `--elevation` | bool  | Include elevation data in waypoints                                   | True       | [True, False]                                    |
 
 
 ## Examples
@@ -55,13 +55,6 @@ gpx-kml-converter --quiet input
 ```bash
 gpx-kml-converter --output auto input
 ```
-
-By default, `compress` writes each GPX result beside its source as
-`<source-stem>_processed_<date-time>.gpx`. A ZIP member is written under a
-sibling directory named after the archive without its extension. `merge`
-writes `gpx_processed_<date-time>.gpx` in the current directory. A custom
-`--output` directory overrides these destinations. Existing output names are
-overwritten; duplicate names within one batch receive a numeric suffix.
 
 ### 5. With tolerance parameter
 
@@ -115,3 +108,13 @@ To create a new file, pass a not-yet-existing `.gpx` path as the input:
 gpx-kml-converter --mode add-poi --lat 48.8584 --lon 2.2945 \
   --name "Eiffel Tower" new-pois.gpx
 ```
+
+## Notes on --output parameter
+
+By default, `compress` writes each GPX result beside its source as
+`<source-stem>_processed_<date-time>.gpx`. A ZIP member is written under a
+sibling directory named after the archive without its extension. `merge`
+writes `gpx_processed_<date-time>.gpx` in the current directory. A custom
+`--output` directory overrides these destinations. Existing output names are
+overwritten; duplicate names within one batch receive a numeric suffix.
+
