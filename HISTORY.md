@@ -4,6 +4,12 @@ Changelog
 
 (unreleased)
 ------------
+- Move _version.py to gitignore. [Paul Magister]
+
+
+1.1.5 (2026-10-09)
+------------------
+- Docs: Update HISTORY.md for release 1.1.5. [Paul Magister]
 - Fix github action tests for macos. [Paul Magister]
 
 
