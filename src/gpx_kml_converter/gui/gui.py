@@ -27,8 +27,9 @@ from config_cli_gui.persistence import read_last_used_config
 from gpxpy.gpx import GPX
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 
+from gpx_kml_converter.application.processing import process_gpx_files
 from gpx_kml_converter.config.config import ConfigParameterManager
-from gpx_kml_converter.core.base import BaseGPXProcessor, GeoFileManager  # Import GeoFileManager
+from gpx_kml_converter.core.base import GeoFileManager
 from gpx_kml_converter.core.gpx_plotter import GPXPlotter
 from gpx_kml_converter.core.logging import (
     connect_gui_logging,
@@ -114,9 +115,9 @@ class MainGui:
     """Main GUI application class."""
 
     processing_modes = [
-        ("compress_files", "⏬", "Compress Files"),
-        ("merge_files", "🔂", "Merge Files"),
-        ("extract_pois", "📍", "Extract POIs from Tracks"),
+        ("compress", "⏬", "Compress Files"),
+        ("merge", "🔂", "Merge Files"),
+        ("extract-pois", "📍", "Extract POIs from Tracks"),
     ]
 
     def __init__(self, root):
@@ -720,26 +721,15 @@ class MainGui:
 
         def processing_thread():
             try:
-                processor = BaseGPXProcessor(
-                    input_=selected_gpx_objects,
+                processed_gpx_map = process_gpx_files(
+                    selected_gpx_objects,
+                    mode=mode,
                     output=self.config_manager.cli.output.value,
                     tolerance=self.config_manager.cli.tolerance.value,
                     date_format=self.config_manager.app.date_format.value,
                     elevation=self.config_manager.cli.elevation.value,
                     logger=self.logger,
                 )
-
-                if mode == "compress_files":
-                    processed_gpx_map = processor.compress_files()
-                elif mode == "merge_files":
-                    # For merging, typically all selected files are merged into one output
-                    # The processor should handle creating a single output GPX
-                    processed_gpx_map = processor.merge_files()
-                elif mode == "extract_pois":
-                    processed_gpx_map = processor.extract_pois()
-                else:
-                    self.logger.error(f"Unknown processing mode: {mode}")
-                    processed_gpx_map = {}
 
                 # Update GUI after processing
                 self.root.after(0, self._update_gui_after_processing, processed_gpx_map)

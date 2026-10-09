@@ -4,13 +4,19 @@ import argparse
 import math
 from pathlib import Path
 
+from gpx_kml_converter.application.processing import (
+    PROCESSING_MODES as GPX_PROCESSING_MODES,
+)
+from gpx_kml_converter.application.processing import (
+    process_gpx_files,
+)
 from gpx_kml_converter.config.config import ConfigParameterManager
-from gpx_kml_converter.core.base import BaseGPXProcessor, GeoFileManager
+from gpx_kml_converter.core.base import GeoFileManager
 from gpx_kml_converter.core.gpx_file import add_poi_to_gpx
 from gpx_kml_converter.core.logging import initialize_logging
 
 SUPPORTED_INPUTS = {".gpx", ".kml", ".zip"}
-PROCESSING_MODES = ("compress", "merge", "extract-pois", "add-poi")
+PROCESSING_MODES = (*GPX_PROCESSING_MODES, "add-poi")
 
 
 def _parse_bool(value: str) -> bool:
@@ -174,20 +180,15 @@ def main(argv: list[str] | None = None) -> int:
             raise ValueError("No valid GPX or KML data could be loaded.")
 
         logger.info(f"Loaded {len(loaded_files)} input files.")
-        processor = BaseGPXProcessor(
-            input_=list(loaded_files.values()),
+        result_files = process_gpx_files(
+            list(loaded_files.values()),
+            mode=mode,
             output=config_manager.cli.output.value,
             tolerance=tolerance,
             date_format=config_manager.app.date_format.value,
             elevation=config_manager.cli.elevation.value,
             logger=logger,
         )
-        process = {
-            "compress": processor.compress_files,
-            "merge": processor.merge_files,
-            "extract-pois": processor.extract_pois,
-        }[mode]
-        result_files = process()
         if not result_files:
             raise RuntimeError(f"The {mode} operation did not produce any output files.")
 

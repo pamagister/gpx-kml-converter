@@ -2,7 +2,6 @@ import os
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import MagicMock, patch
 
 import gpxpy
 from gpxpy.gpx import GPX, GPXWaypoint
@@ -39,28 +38,30 @@ class TestCli(unittest.TestCase):
 
     def test_cli_dispatches_merge_for_multiple_inputs(self):
         with tempfile.TemporaryDirectory() as temp_dir:
-            inputs = [Path(temp_dir) / "one.gpx", Path(temp_dir) / "two.kml"]
-            for path in inputs:
-                path.touch()
+            root = Path(temp_dir)
+            inputs = [root / "one.gpx", root / "two.gpx"]
+            for path, name, latitude in zip(inputs, ("First", "Second"), (48.0, 49.0)):
+                source = GPX()
+                source.waypoints.append(GPXWaypoint(latitude=latitude, longitude=11.0, name=name))
+                path.write_text(source.to_xml(), encoding="utf-8")
 
-            logger_manager = MagicMock()
-            loaded_files = {path: object() for path in inputs}
-
-            with (
-                patch("gpx_kml_converter.cli.cli.initialize_logging", return_value=logger_manager),
-                patch("gpx_kml_converter.cli.cli.GeoFileManager") as file_manager,
-                patch("gpx_kml_converter.cli.cli.BaseGPXProcessor") as processor_class,
-            ):
-                file_manager.return_value.load_files.return_value = loaded_files
-                processor_class.return_value.merge_files.return_value = {
-                    Path("merged_output.gpx"): object()
-                }
-
-                exit_code = main(["--mode", "merge", *(str(path) for path in inputs)])
+            output_dir = root / "output"
+            exit_code = self._run_cli(
+                root,
+                [
+                    "--mode",
+                    "merge",
+                    "--elevation",
+                    "false",
+                    "--output",
+                    str(output_dir),
+                    *(str(path) for path in inputs),
+                ],
+            )
 
             self.assertEqual(exit_code, 0)
-            processor_class.return_value.merge_files.assert_called_once()
-            processor_class.return_value.compress_files.assert_not_called()
+            merged = gpxpy.parse((output_dir / "merged_output.gpx").read_text(encoding="utf-8"))
+            self.assertEqual([point.name for point in merged.waypoints], ["First", "Second"])
 
     def test_cli_merges_poi_gpx_and_kml_examples(self):
         fixtures_dir = Path(__file__).resolve().parents[1] / "examples" / "POIs"
