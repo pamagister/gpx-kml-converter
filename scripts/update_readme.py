@@ -18,4 +18,4 @@ dst.write_text(
     ),
     encoding="utf-8",
 )
-print(f"DONE    -  {dst} updated from {src}")
+print(f"Generated: {dst} updated from {src}")

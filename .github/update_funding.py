@@ -16,7 +16,7 @@ def update_funding_file():
     Downloads the FUNDING.md file from the central repository
     and saves it to the specified path within the current repository.
     """
-    print(f"Attempting to download FUNDING.md from: {FUNDING_REPO_URL}")
+    print(f"   ... Attempting to download FUNDING.md from: {FUNDING_REPO_URL}")
 
     try:
         # Send a GET request to the URL
@@ -30,7 +30,7 @@ def update_funding_file():
         with open(DST_THIS_REPO, "wb") as f:
             f.write(response.content)
 
-        print(f"Successfully updated FUNDING.md at: {DST_THIS_REPO}")
+        print(f"Generated: Successfully updated {DST_THIS_REPO}")
 
     except requests.exceptions.RequestException as e:
         print(f"Error downloading FUNDING.md: {e}", file=sys.stderr)
