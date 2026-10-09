@@ -1,6 +1,7 @@
 import os
 import tempfile
 import unittest
+import zipfile
 from pathlib import Path
 
 import gpxpy
@@ -60,7 +61,8 @@ class TestCli(unittest.TestCase):
             )
 
             self.assertEqual(exit_code, 0)
-            merged = gpxpy.parse((output_dir / "merged_output.gpx").read_text(encoding="utf-8"))
+            merged_path = next(output_dir.glob("gpx_processed_*.gpx"))
+            merged = gpxpy.parse(merged_path.read_text(encoding="utf-8"))
             self.assertEqual([point.name for point in merged.waypoints], ["First", "Second"])
 
     def test_cli_merges_poi_gpx_and_kml_examples(self):
@@ -83,7 +85,8 @@ class TestCli(unittest.TestCase):
             )
 
             self.assertEqual(result, 0)
-            merged_gpx = gpxpy.parse((output_dir / "merged_output.gpx").read_text(encoding="utf-8"))
+            merged_path = next(output_dir.glob("gpx_processed_*.gpx"))
+            merged_gpx = gpxpy.parse(merged_path.read_text(encoding="utf-8"))
             merged_names = [waypoint.name for waypoint in merged_gpx.waypoints]
 
         self.assertEqual(len(merged_names), 41)
@@ -104,11 +107,86 @@ class TestCli(unittest.TestCase):
                 Path(temp_dir),
                 ["--mode", "merge", "--output", str(output_dir), str(cities_path)],
             )
-            merged_gpx = gpxpy.parse((output_dir / "merged_output.gpx").read_text(encoding="utf-8"))
+            merged_path = next(output_dir.glob("gpx_processed_*.gpx"))
+            merged_gpx = gpxpy.parse(merged_path.read_text(encoding="utf-8"))
 
         self.assertEqual(result, 0)
         olbia = next(point for point in merged_gpx.waypoints if point.name == "Olbia")
         self.assertEqual(olbia.description, "Dies ist eine Beschreibung")
+
+    def test_cli_compress_writes_processed_file_next_to_unchanged_source(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            source_path = root / "walk.gpx"
+            source = GPX()
+            track = gpxpy.gpx.GPXTrack(name="Walk")
+            segment = gpxpy.gpx.GPXTrackSegment()
+            segment.points.extend(
+                [
+                    gpxpy.gpx.GPXTrackPoint(latitude=50.0, longitude=10.0),
+                    gpxpy.gpx.GPXTrackPoint(latitude=50.00001, longitude=10.0005),
+                    gpxpy.gpx.GPXTrackPoint(latitude=50.0, longitude=10.001),
+                ]
+            )
+            track.segments.append(segment)
+            source.tracks.append(track)
+            source_path.write_text(source.to_xml(), encoding="utf-8")
+            original = source_path.read_bytes()
+
+            result = self._run_cli(
+                root,
+                ["--mode", "compress", "--elevation", "false", str(source_path)],
+            )
+
+            outputs = list(root.glob("walk_processed_*.gpx"))
+            self.assertEqual(result, 0)
+            self.assertEqual(len(outputs), 1)
+            self.assertEqual(source_path.read_bytes(), original)
+            self.assertTrue(gpxpy.parse(outputs[0].read_text(encoding="utf-8")).tracks)
+
+    def test_cli_compresses_zip_members_under_stem_named_folder(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            source_path = Path(__file__).parent.parent / "examples" / "kuhkopfsteig.gpx"
+            archive_path = root / "trails.zip"
+            with tempfile.TemporaryDirectory() as input_dir:
+                archive_source = Path(input_dir) / "hike.gpx"
+                archive_source.write_bytes(source_path.read_bytes())
+                with zipfile.ZipFile(archive_path, "w") as archive:
+                    archive.write(archive_source, "trails/hike.gpx")
+            original = archive_path.read_bytes()
+
+            result = self._run_cli(
+                root,
+                ["--mode", "compress", "--elevation", "false", str(archive_path)],
+            )
+
+            output_dir = root / "trails"
+            outputs = list(output_dir.glob("hike_processed_*.gpx"))
+            self.assertEqual(result, 0)
+            self.assertEqual(len(outputs), 1)
+            self.assertEqual(archive_path.read_bytes(), original)
+            self.assertTrue(gpxpy.parse(outputs[0].read_text(encoding="utf-8")).tracks)
+
+    def test_cli_default_merge_writes_top_level_timestamped_file(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            source_path = root / "source.gpx"
+            source = GPX()
+            source.waypoints.append(GPXWaypoint(latitude=48.0, longitude=11.0, name="Start"))
+            source_path.write_text(source.to_xml(), encoding="utf-8")
+
+            result = self._run_cli(
+                root,
+                ["--mode", "merge", "--elevation", "false", str(source_path)],
+            )
+
+            outputs = list(root.glob("gpx_processed_*.gpx"))
+            self.assertEqual(result, 0)
+            self.assertEqual(len(outputs), 1)
+            self.assertEqual(
+                gpxpy.parse(outputs[0].read_text(encoding="utf-8")).waypoints[0].name, "Start"
+            )
 
     def test_add_poi_updates_existing_gpx_and_preserves_existing_waypoints(self):
         with tempfile.TemporaryDirectory() as temp_dir:

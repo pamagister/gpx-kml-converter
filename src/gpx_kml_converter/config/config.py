@@ -32,7 +32,7 @@ class CliConfig(ConfigCategory):
     output: ConfigParameter = ConfigParameter(
         name="output",
         value="auto",
-        help="Output directory; 'auto' creates a timestamped directory",
+        help="Output directory override; 'auto' uses mode-specific output locations",
         is_cli=True,
     )
 

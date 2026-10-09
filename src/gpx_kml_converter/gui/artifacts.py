@@ -1,6 +1,7 @@
 """Stable identities and metadata helpers for the GUI artifact browser."""
 
 from collections.abc import Iterable
+from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
@@ -18,6 +19,13 @@ class ArtifactIdentity:
     file_path: Path
     kind: ArtifactKind
     index: int | None = None
+
+
+@dataclass(frozen=True)
+class ArtifactGroupIdentity:
+    collection: FileCollection
+    file_path: Path
+    kind: PlottedArtifactKind
 
 
 @dataclass(frozen=True)
@@ -112,14 +120,33 @@ def selected_input_paths(
     return [path for path in ordered_paths if path in selected_paths] or ordered_paths
 
 
+def remove_artifacts(gpx: GPX, kind: PlottedArtifactKind, indexes: Iterable[int] | None) -> GPX:
+    """Return a copy with the selected GPX artifacts removed."""
+    copied_gpx = deepcopy(gpx)
+    artifacts = {
+        "track": copied_gpx.tracks,
+        "route": copied_gpx.routes,
+        "waypoint": copied_gpx.waypoints,
+    }[kind]
+    selected_indexes = set(range(len(artifacts)) if indexes is None else indexes)
+    if any(index < 0 or index >= len(artifacts) for index in selected_indexes):
+        raise ValueError(f"{kind.title()} index is out of range.")
+    for index in sorted(selected_indexes, reverse=True):
+        del artifacts[index]
+    return copied_gpx
+
+
 def artifact_metadata(
-    gpx: GPX, identity: ArtifactIdentity, summary: FileSummary | None = None
+    gpx: GPX,
+    identity: ArtifactIdentity,
+    summary: FileSummary | None = None,
+    file_name: str | None = None,
 ) -> tuple[tuple[str, str], ...]:
     """Return context metadata for one file or GPX artifact."""
     if identity.kind == "file":
         summary = summary or summarize_gpx(gpx)
         return (
-            ("File", identity.file_path.name),
+            ("File", file_name or identity.file_path.name),
             ("Name", gpx.name or "N/A"),
             ("Creator", gpx.creator or "N/A"),
             ("Description", gpx.description or "N/A"),

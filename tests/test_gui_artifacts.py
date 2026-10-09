@@ -22,6 +22,7 @@ from gpx_kml_converter.gui.artifacts import (
     artifact_label,
     artifact_metadata,
     plot_reference,
+    remove_artifacts,
     resolve_artifact,
     selected_input_paths,
     summarize_gpx,
@@ -132,6 +133,27 @@ class TestGuiArtifacts(unittest.TestCase):
         self.assertEqual(plot_reference(route), ("route", 0))
         self.assertEqual(plot_reference(waypoint), ("waypoint", 0))
         self.assertIsNone(plot_reference(ArtifactIdentity("input", Path("sample.gpx"), "file")))
+
+    def test_removing_multiple_artifacts_creates_an_independent_round_trippable_copy(self):
+        source_waypoints = list(self.gpx.waypoints)
+
+        edited = remove_artifacts(self.gpx, "track", [0, 1])
+        self.assertIsNot(edited, self.gpx)
+        self.assertEqual(edited.tracks, [])
+        self.assertEqual(self.gpx.tracks[0].name, "Loop")
+        self.assertEqual(self.gpx.waypoints, source_waypoints)
+
+        edited = remove_artifacts(self.gpx, "waypoint", [0])
+        restored = gpxpy.parse(edited.to_xml())
+        self.assertEqual(restored.waypoints, [])
+        self.assertEqual(len(restored.tracks), 2)
+        self.assertEqual(len(self.gpx.waypoints), 1)
+
+    def test_removing_an_artifact_category_removes_all_of_that_kind(self):
+        edited = remove_artifacts(self.gpx, "route", None)
+
+        self.assertEqual(edited.routes, [])
+        self.assertEqual(len(self.gpx.routes), 1)
 
     def test_map_and_profile_plot_the_indexed_duplicate_name_track(self):
         figure = Figure()

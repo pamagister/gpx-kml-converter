@@ -2,7 +2,9 @@
 
 import logging
 import math
+import os
 import traceback
+from collections.abc import Sequence
 from datetime import datetime
 from pathlib import Path
 
@@ -14,7 +16,7 @@ from gpx_kml_converter.core.elevation import (
     ElevationService,
     SRTMElevationProvider,
 )
-from gpx_kml_converter.core.file_loader import GeoFileManager
+from gpx_kml_converter.core.file_loader import FileOrigin, GeoFileManager
 from gpx_kml_converter.core.geometry import TrackPointOptimizer
 from gpx_kml_converter.core.gpx_serializer import GPXSerializer
 
@@ -31,13 +33,20 @@ class BaseGPXProcessor:
         elevation: bool = True,
         logger: logging.Logger | None = None,
         elevation_provider: ElevationProvider | None = None,
+        source_origins: Sequence[FileOrigin] | None = None,
     ):
         self.logger = logger if logger is not None else logging.getLogger(__name__)
         if isinstance(input_, str) or isinstance(input_, Path):
-            loaded_gpx_map = GeoFileManager(logger=self.logger).load_files([Path(input_)])
-            self.input = list(loaded_gpx_map.values())
+            loaded_files = GeoFileManager(logger=self.logger).load_files_with_origins(
+                [Path(input_)]
+            )
+            self.input = [loaded.gpx for loaded in loaded_files.values()]
+            self.source_origins = [loaded.origin for loaded in loaded_files.values()]
         elif isinstance(input_, list) and all(isinstance(g, GPX) for g in input_):
             self.input = input_
+            if source_origins is not None and len(source_origins) != len(self.input):
+                raise ValueError("source_origins must have one entry per input GPX object.")
+            self.source_origins = list(source_origins) if source_origins is not None else []
         else:
             raise ValueError("input_gpx_list must be a list of gpxpy.gpx.GPX objects.")
 
@@ -69,6 +78,20 @@ class BaseGPXProcessor:
 
         output_path.mkdir(parents=True, exist_ok=True)
         return output_path
+
+    def _timestamp(self) -> str:
+        return datetime.now().strftime(f"{self.date_format}_%H%M%S")
+
+    @staticmethod
+    def _unique_batch_path(output_path: Path, used_paths: set[str]) -> Path:
+        """Avoid two inputs in one batch overwriting the same generated path."""
+        candidate = output_path
+        suffix = 2
+        while os.path.normcase(str(candidate.absolute())) in used_paths:
+            candidate = output_path.with_name(f"{output_path.stem}_{suffix}{output_path.suffix}")
+            suffix += 1
+        used_paths.add(os.path.normcase(str(candidate.absolute())))
+        return candidate
 
     def _get_adjusted_elevation(self, point: GPXTrackPoint | GPXWaypoint) -> float | None:
         """Get provider elevation, falling back to the source value or 0."""
@@ -118,9 +141,10 @@ class BaseGPXProcessor:
     def compress_files(self) -> dict[Path, GPX]:
         """Shrink the size of all given gpx/kml files by optimizing track points."""
         generated_gpx_map = {}
-        output_folder = self._get_output_folder()
+        explicit_output = self.output is not None and str(self.output) != "auto"
+        timestamp = self._timestamp()
         self.logger.info(f"Processing {len(self.input)} GPX objects for compression...")
-        used_filenames = set()
+        used_paths: set[str] = set()
 
         for idx, gpx_obj in enumerate(self.input):
             try:
@@ -148,15 +172,25 @@ class BaseGPXProcessor:
                     optimized_gpx.waypoints.append(self._optimize_waypoint(waypoint))
 
                 # Save the optimized GPX
-                base_filename = f"optimized_{gpx_obj.name or f'file_{idx + 1}'}.gpx"
-                output_filename = base_filename
-                duplicate_index = 2
-                while output_filename in used_filenames:
-                    output_filename = f"{Path(base_filename).stem}_{duplicate_index}.gpx"
-                    duplicate_index += 1
-                used_filenames.add(output_filename)
-                output_path = output_folder / output_filename
-                saved_path = self._save_gpx_file(optimized_gpx, output_path)
+                origin = self.source_origins[idx] if idx < len(self.source_origins) else None
+                if explicit_output:
+                    output_folder = Path(self.output)
+                elif origin is not None:
+                    output_folder = origin.output_directory
+                else:
+                    output_folder = Path.cwd()
+                output_folder.mkdir(parents=True, exist_ok=True)
+                source_stem = (
+                    origin.output_stem if origin is not None else gpx_obj.name or f"file_{idx + 1}"
+                )
+                output_path = self._unique_batch_path(
+                    output_folder / f"{source_stem}_processed_{timestamp}.gpx", used_paths
+                )
+                saved_path = self._save_gpx_file(
+                    optimized_gpx,
+                    output_path,
+                    origin.source_path if origin is not None else None,
+                )
                 if saved_path:
                     generated_gpx_map[saved_path] = optimized_gpx
                     self.logger.info(
@@ -240,8 +274,13 @@ class BaseGPXProcessor:
                 self.logger.debug(f"Full traceback:\n{traceback.format_exc()}")
                 continue
 
-        output_folder = self._get_output_folder()
-        output_path = output_folder / "merged_output.gpx"
+        output_folder = (
+            Path(self.output)
+            if self.output is not None and str(self.output) != "auto"
+            else Path.cwd()
+        )
+        output_folder.mkdir(parents=True, exist_ok=True)
+        output_path = output_folder / f"gpx_processed_{self._timestamp()}.gpx"
         saved_path = self._save_gpx_file(merged_gpx, output_path)
 
         if saved_path:

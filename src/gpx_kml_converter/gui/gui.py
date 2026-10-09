@@ -27,7 +27,7 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolb
 
 from gpx_kml_converter.application.processing import process_gpx_files
 from gpx_kml_converter.config.config import ConfigParameterManager
-from gpx_kml_converter.core.file_loader import GeoFileManager
+from gpx_kml_converter.core.file_loader import FileOrigin, GeoFileManager
 from gpx_kml_converter.core.gpx_plotter import GPXPlotter
 from gpx_kml_converter.core.logging import (
     connect_gui_logging,
@@ -36,6 +36,7 @@ from gpx_kml_converter.core.logging import (
     initialize_logging,
 )
 from gpx_kml_converter.gui.artifacts import (
+    ArtifactGroupIdentity,
     ArtifactIdentity,
     FileCollection,
     FileSummary,
@@ -43,6 +44,7 @@ from gpx_kml_converter.gui.artifacts import (
     artifact_label,
     artifact_metadata,
     plot_reference,
+    remove_artifacts,
     selected_input_paths,
     summarize_gpx,
 )
@@ -159,7 +161,7 @@ class MainGui:
     """Main GUI application class."""
 
     processing_modes = [
-        ("compress", "Compress Files"),
+        ("compress", "Process Files"),
         ("merge", "Merge Files"),
         ("extract-pois", "Extract POIs from Tracks"),
     ]
@@ -180,9 +182,14 @@ class MainGui:
         self.gpx_input: dict[Path, GPX] = {}
         self.gpx_output: dict[Path, GPX] = {}
         self._tree_identity: dict[str, ArtifactIdentity] = {}
+        self._tree_group_identity: dict[str, ArtifactGroupIdentity] = {}
         self._identity_tree_item: dict[ArtifactIdentity, str] = {}
         self._file_summaries: dict[tuple[FileCollection, Path], FileSummary] = {}
+        self._file_origins: dict[tuple[FileCollection, Path], FileOrigin] = {}
+        self._file_labels: dict[tuple[FileCollection, Path], str] = {}
+        self._virtual_files: set[tuple[FileCollection, Path]] = set()
         self._tree_item_counter = 0
+        self._working_copy_counter = 0
         self._active_identity: ArtifactIdentity | None = None
         self._active_profile_identity: ArtifactIdentity | None = None
         self.batch_status_var = tk.StringVar(master=self.root)
@@ -298,6 +305,14 @@ class MainGui:
         tree_frame.grid_columnconfigure(0, weight=1)
         self.artifact_tree.bind("<<TreeviewSelect>>", self._on_browser_selection)
         self.artifact_tree.bind("<Double-Button-1>", self._open_selected_tree_file)
+        self.artifact_tree.bind("<Button-3>", self._show_browser_context_menu)
+        self.artifact_tree.bind("<Shift-F10>", self._show_keyboard_context_menu)
+        self.artifact_tree.bind("<Menu>", self._show_keyboard_context_menu)
+        self.artifact_tree.bind("<Delete>", self._delete_selected_workspace_items)
+        self.artifact_tree.bind("<KP_Delete>", self._delete_selected_workspace_items)
+        if sys.platform == "darwin":
+            self.artifact_tree.bind("<Button-2>", self._show_browser_context_menu)
+            self.artifact_tree.bind("<Control-Button-1>", self._show_browser_context_menu)
 
         self.batch_status_label = ttk.Label(
             parent_frame, textvariable=self.batch_status_var, anchor=tk.W
@@ -517,6 +532,9 @@ class MainGui:
         self.gpx_input.clear()
         self.gpx_output.clear()
         self._file_summaries.clear()
+        self._file_origins.clear()
+        self._file_labels.clear()
+        self._virtual_files.clear()
         self._rebuild_artifact_tree()
         self._show_empty_inspector()
         self.logger.info("Workspace cleared")
@@ -561,6 +579,15 @@ class MainGui:
             return
 
         added_paths = self._add_results_to_inputs(self.gpx_input, self.gpx_output, selected_paths)
+        for path in added_paths:
+            output_key = ("output", path)
+            input_key = ("input", path)
+            if output_key in self._file_origins:
+                self._file_origins[input_key] = self._file_origins[output_key]
+            if output_key in self._file_labels:
+                self._file_labels[input_key] = self._file_labels[output_key]
+            if output_key in self._virtual_files:
+                self._virtual_files.add(input_key)
         self._rebuild_artifact_tree()
         input_items = [
             self._identity_tree_item[ArtifactIdentity("input", path, "file")]
@@ -574,20 +601,6 @@ class MainGui:
         self._on_browser_selection()
         self.logger.info(f"Added {len(added_paths)} generated result(s) to the input workspace.")
 
-    def _remove_selected_input_files(self):
-        """Remove selected input file nodes from the workspace."""
-        paths_to_remove = self._selected_tree_file_paths("input")
-        if not paths_to_remove:
-            messagebox.showwarning("Warning", "No files selected to remove!")
-            return
-
-        for path in paths_to_remove:
-            del self.gpx_input[path]
-            self._file_summaries.pop(("input", path), None)
-        self._rebuild_artifact_tree()
-        self._show_empty_inspector()
-        self.logger.info(f"Removed {len(paths_to_remove)} selected input files.")
-
     def _new_tree_item_id(self) -> str:
         self._tree_item_counter += 1
         return f"artifact-{self._tree_item_counter}"
@@ -596,6 +609,7 @@ class MainGui:
         """Refresh browser rows after workspace contents change, not on selection."""
         self.artifact_tree.delete(*self.artifact_tree.get_children(""))
         self._tree_identity.clear()
+        self._tree_group_identity.clear()
         self._identity_tree_item.clear()
         roots = {
             "input": self.artifact_tree.insert(
@@ -622,10 +636,14 @@ class MainGui:
                     self._file_summaries[cache_key] = summarize_gpx(gpx)
                 summary = self._file_summaries[cache_key]
                 file_identity = ArtifactIdentity(collection, file_path, "file")
+                display_name = self._file_labels.get(cache_key)
+                if display_name is None:
+                    origin = self._file_origins.get(cache_key)
+                    display_name = origin.display_name if origin is not None else file_path.name
                 file_item = self._insert_artifact(
                     roots[collection],
                     file_identity,
-                    f"{file_path.name} ({summary.artifact_count})",
+                    f"{display_name} ({summary.artifact_count})",
                 )
                 for group_label, identities in artifact_groups(gpx, collection, file_path):
                     group_item = self.artifact_tree.insert(
@@ -633,6 +651,9 @@ class MainGui:
                         tk.END,
                         iid=self._new_tree_item_id(),
                         text=f"{group_label} ({len(identities)})",
+                    )
+                    self._tree_group_identity[group_item] = ArtifactGroupIdentity(
+                        collection, file_path, identities[0].kind
                     )
                     for identity in identities:
                         self._insert_artifact(
@@ -661,6 +682,160 @@ class MainGui:
         file_map = self.gpx_input if collection == "input" else self.gpx_output
         return [path for path in file_map if path in selected]
 
+    def _selected_removal_kind(self) -> str | None:
+        selected_kinds = set()
+        for item_id in self.artifact_tree.selection():
+            identity = self._tree_identity.get(item_id)
+            group_identity = self._tree_group_identity.get(item_id)
+            kind = (
+                identity.kind
+                if identity is not None
+                else (group_identity.kind if group_identity is not None else None)
+            )
+            if kind is None:
+                return None
+            selected_kinds.add(kind)
+        return next(iter(selected_kinds)) if len(selected_kinds) == 1 else None
+
+    def _show_browser_context_menu(self, event):
+        item_id = self.artifact_tree.identify_row(event.y)
+        if item_id:
+            self._show_browser_context_menu_at(item_id, event.x_root, event.y_root)
+        return "break"
+
+    def _show_keyboard_context_menu(self, _event=None):
+        item_id = self.artifact_tree.focus()
+        if not item_id:
+            return "break"
+        bounds = self.artifact_tree.bbox(item_id)
+        if bounds:
+            x, y, _width, height = bounds
+            self._show_browser_context_menu_at(
+                item_id,
+                self.artifact_tree.winfo_rootx() + x,
+                self.artifact_tree.winfo_rooty() + y + height,
+            )
+        return "break"
+
+    def _show_browser_context_menu_at(self, item_id: str, x: int, y: int):
+        if item_id not in self.artifact_tree.selection():
+            self.artifact_tree.selection_set(item_id)
+        self.artifact_tree.focus(item_id)
+        menu = tk.Menu(self.root, tearoff=0)
+        if item_id in self._tree_identity or item_id in self._tree_group_identity:
+            menu.add_command(
+                label="Open Containing Folder",
+                command=lambda: self._open_containing_folder(item_id),
+            )
+            menu.add_separator()
+
+        kind = self._selected_removal_kind()
+        if kind == "file":
+            menu.add_command(
+                label="Remove from Workspace",
+                command=self._delete_selected_workspace_items,
+            )
+        elif kind in {"track", "route", "waypoint"}:
+            label = {"track": "Tracks", "route": "Routes", "waypoint": "POIs"}[kind]
+            menu.add_command(
+                label=f"Remove selected {label}",
+                command=self._delete_selected_workspace_items,
+            )
+        else:
+            menu.add_command(
+                label="Remove unavailable for mixed selections",
+                state=tk.DISABLED,
+            )
+
+        try:
+            menu.tk_popup(x, y)
+        finally:
+            menu.grab_release()
+
+    def _delete_selected_workspace_items(self, _event=None):
+        kind = self._selected_removal_kind()
+        if kind is None:
+            messagebox.showwarning(
+                "Cannot Remove Selection",
+                "Select files or artifacts of one type before removing them.",
+            )
+            return "break"
+
+        if kind == "file":
+            selected_files = [
+                self._tree_identity[item_id]
+                for item_id in self.artifact_tree.selection()
+                if item_id in self._tree_identity
+            ]
+            selected_paths = {identity.file_path for identity in selected_files}
+            for file_path in selected_paths:
+                for collection, file_map in (
+                    ("input", self.gpx_input),
+                    ("output", self.gpx_output),
+                ):
+                    file_map.pop(file_path, None)
+                    cache_key = (collection, file_path)
+                    self._file_summaries.pop(cache_key, None)
+                    self._file_origins.pop(cache_key, None)
+                    self._file_labels.pop(cache_key, None)
+                    self._virtual_files.discard(cache_key)
+            self.logger.info(f"Removed {len(selected_paths)} file(s) from the workspace.")
+            self._rebuild_artifact_tree()
+            self._show_empty_inspector()
+            return "break"
+
+        targets: dict[tuple[FileCollection, Path], set[int] | None] = {}
+        for item_id in self.artifact_tree.selection():
+            identity = self._tree_identity.get(item_id)
+            group_identity = self._tree_group_identity.get(item_id)
+            if group_identity is not None:
+                targets[(group_identity.collection, group_identity.file_path)] = None
+            elif identity is not None and identity.index is not None:
+                target_key = (identity.collection, identity.file_path)
+                if targets.get(target_key, set()) is not None:
+                    targets.setdefault(target_key, set()).add(identity.index)
+
+        new_paths = []
+        for (collection, file_path), indexes in targets.items():
+            file_map = self.gpx_input if collection == "input" else self.gpx_output
+            source_gpx = file_map.get(file_path)
+            if source_gpx is None:
+                self.logger.error(f"GPX object not found for path: {file_path}")
+                messagebox.showerror("Error", "The selected GPX data is no longer available.")
+                return "break"
+
+            derived_gpx = remove_artifacts(source_gpx, kind, indexes)
+            origin = self._file_origins.get((collection, file_path), FileOrigin(file_path))
+            self._working_copy_counter += 1
+            working_copy_path = (
+                origin.source_path.parent
+                / f".{origin.source_path.name}.workspace"
+                / f"working-copy-{self._working_copy_counter}-{origin.output_stem}.gpx"
+            )
+            output_key = ("output", working_copy_path)
+            self.gpx_output[working_copy_path] = derived_gpx
+            self._file_origins[output_key] = origin
+            self._file_labels[output_key] = (
+                f"{origin.output_stem} (Working Copy {self._working_copy_counter}).gpx"
+            )
+            self._virtual_files.add(output_key)
+            self._file_summaries.pop(output_key, None)
+            new_paths.append(working_copy_path)
+
+        self._rebuild_artifact_tree()
+        result_items = [
+            self._identity_tree_item[ArtifactIdentity("output", path, "file")] for path in new_paths
+        ]
+        if result_items:
+            self.artifact_tree.selection_set(*result_items)
+            self.artifact_tree.focus(result_items[-1])
+            self.artifact_tree.see(result_items[-1])
+            self._on_browser_selection()
+        self.logger.info(
+            f"Created {len(new_paths)} derived working copy/copies with selected {kind}s removed."
+        )
+        return "break"
+
     def _selected_input_paths(self) -> list[Path]:
         selected_identities = [
             self._tree_identity[item_id]
@@ -683,6 +858,9 @@ class MainGui:
         self._update_batch_status()
         item_id = self.artifact_tree.focus()
         identity = self._tree_identity.get(item_id)
+        group_identity = self._tree_group_identity.get(item_id)
+        if identity is None and group_identity is not None:
+            identity = ArtifactIdentity(group_identity.collection, group_identity.file_path, "file")
         if identity is None:
             parent_item = self.artifact_tree.parent(item_id)
             parent_identity = self._tree_identity.get(parent_item)
@@ -713,6 +891,7 @@ class MainGui:
                     gpx,
                     identity,
                     self._file_summaries.get((identity.collection, identity.file_path)),
+                    self._file_labels.get((identity.collection, identity.file_path)),
                 )
             ),
         )
@@ -745,9 +924,19 @@ class MainGui:
     def _open_selected_tree_file(self, event):
         item_id = self.artifact_tree.identify_row(event.y)
         identity = self._tree_identity.get(item_id)
+        group_identity = self._tree_group_identity.get(item_id)
+        if identity is None and group_identity is not None:
+            identity = ArtifactIdentity(group_identity.collection, group_identity.file_path, "file")
         if identity is None:
             return
-        file_path = identity.file_path
+        cache_key = (identity.collection, identity.file_path)
+        origin = self._file_origins.get(cache_key, FileOrigin(identity.file_path))
+        file_path = origin.source_path
+
+        if cache_key in self._virtual_files:
+            self.logger.warning(
+                f"Working copy is not saved; opening its unchanged source file: {file_path}"
+            )
 
         if not file_path.exists():
             self.logger.error(f"File not found: {file_path}")
@@ -765,6 +954,35 @@ class MainGui:
         except Exception as e:
             self.logger.error(f"Could not open file {file_path.name}: {e}")
             messagebox.showerror("Error", f"Could not open file {file_path.name}: {e}")
+
+    def _open_containing_folder(self, item_id: str):
+        identity = self._tree_identity.get(item_id)
+        group_identity = self._tree_group_identity.get(item_id)
+        if identity is None and group_identity is not None:
+            identity = ArtifactIdentity(group_identity.collection, group_identity.file_path, "file")
+        if identity is None:
+            return
+
+        origin = self._file_origins.get(
+            (identity.collection, identity.file_path), FileOrigin(identity.file_path)
+        )
+        directory = origin.source_path.parent
+        if not directory.is_dir():
+            self.logger.error(f"Containing folder not found: {directory}")
+            messagebox.showerror("Error", f"Containing folder not found: {directory}")
+            return
+
+        try:
+            if sys.platform == "win32":
+                os.startfile(directory)
+            elif sys.platform == "darwin":
+                subprocess.Popen(["open", directory])
+            else:
+                subprocess.Popen(["xdg-open", directory])
+            self.logger.info(f"Opened containing folder: {directory}")
+        except OSError as error:
+            self.logger.error(f"Could not open containing folder {directory}: {error}")
+            messagebox.showerror("Error", f"Could not open containing folder: {error}")
 
     def _open_files(self):
         """Open files and add their parsed GPX objects to the workspace."""
@@ -785,16 +1003,19 @@ class MainGui:
         file_paths_as_paths = [Path(fp) for fp in file_paths]
 
         # Use GeoFileManager to load files
-        loaded_gpx_map = self.geo_file_manager.load_files(file_paths_as_paths)
+        loaded_gpx_map = self.geo_file_manager.load_files_with_origins(file_paths_as_paths)
 
         if not loaded_gpx_map:
             self.logger.warning("No GPX data could be loaded from the selected files.")
             messagebox.showinfo("Info", "No GPX data could be loaded from the selected files.")
             return
 
-        for path, gpx_obj in loaded_gpx_map.items():
+        for path, loaded_file in loaded_gpx_map.items():
             if path not in self.gpx_input:
-                self.gpx_input[path] = gpx_obj
+                self.gpx_input[path] = loaded_file.gpx
+                cache_key = ("input", path)
+                self._file_origins[cache_key] = loaded_file.origin
+                self._file_labels[cache_key] = loaded_file.origin.display_name
                 new_files_loaded += 1
             else:
                 self.logger.info(f"File {path.name} already loaded. Skipping.")
@@ -818,14 +1039,6 @@ class MainGui:
         self.progress.start()
         self.logger.info(f"Starting '{mode}' processing for {len(selected_gpx_objects)} files...")
 
-        # Keep the output model in sync with the generated-results tree.
-        self.gpx_output.clear()
-        self._file_summaries = {
-            key: summary for key, summary in self._file_summaries.items() if key[0] != "output"
-        }
-        self._rebuild_artifact_tree()
-        self._show_empty_inspector()
-
         def processing_thread():
             try:
                 processed_gpx_map = process_gpx_files(
@@ -836,6 +1049,10 @@ class MainGui:
                     date_format=self.config_manager.app.date_format.value,
                     elevation=self.config_manager.cli.elevation.value,
                     logger=self.logger,
+                    source_origins=[
+                        self._file_origins.get(("input", path), FileOrigin(path))
+                        for path in selected_paths
+                    ],
                 )
 
                 # Update GUI after processing
@@ -855,6 +1072,12 @@ class MainGui:
     def _update_gui_after_processing(self, processed_gpx_map: dict[Path, GPX]):
         """Publish generated files in the workspace tree."""
         self.gpx_output.update(processed_gpx_map)
+        for path in processed_gpx_map:
+            output_key = ("output", path)
+            self._file_summaries.pop(output_key, None)
+            self._file_origins[output_key] = FileOrigin(path)
+            self._file_labels.pop(output_key, None)
+            self._virtual_files.discard(output_key)
         self._rebuild_artifact_tree()
         if processed_gpx_map:
             last_path = next(reversed(processed_gpx_map))

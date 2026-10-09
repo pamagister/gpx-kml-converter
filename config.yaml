@@ -14,7 +14,7 @@ app:
 cli:
   # One or more input paths (GPX, KML, ZIP, or directory) | type=str | [CLI]
   input: ''
-  # Output directory; 'auto' creates a timestamped directory | type=str | [CLI]
+  # Output directory override; 'auto' uses mode-specific output locations | type=str | [CLI]
   output: auto
   # Douglas-Peucker simplification tolerance in meters | type=float | [CLI]
   tolerance: 10.0

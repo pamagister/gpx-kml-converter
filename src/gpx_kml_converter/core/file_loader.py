@@ -3,11 +3,49 @@
 import logging
 import traceback
 import zipfile
+from dataclasses import dataclass
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
 import gpxpy
 from gpxpy.gpx import GPX, GPXXMLSyntaxException
+
+
+@dataclass(frozen=True)
+class FileOrigin:
+    """Physical source location and, for ZIP inputs, the source member name."""
+
+    source_path: Path
+    member_name: str | None = None
+    member_index: int | None = None
+
+    @property
+    def output_directory(self) -> Path:
+        if self.member_name is not None:
+            return self.source_path.parent / self.source_path.stem
+        return self.source_path.parent
+
+    @property
+    def output_stem(self) -> str:
+        if self.member_name is not None:
+            return Path(self.member_name).stem
+        return self.source_path.stem
+
+    @property
+    def display_name(self) -> str:
+        if self.member_name is None:
+            return self.source_path.name
+        suffix = f", item {self.member_index + 1}" if self.member_index is not None else ""
+        return f"{self.member_name} (from {self.source_path.name}{suffix})"
+
+
+@dataclass(frozen=True)
+class LoadedGPXFile:
+    """A parsed GPX object together with its stable workspace path and provenance."""
+
+    gpx: GPX
+    origin: FileOrigin
+
 
 try:
     from fastkml import kml
@@ -27,7 +65,9 @@ class GeoFileManager:
     def __init__(self, logger: logging.Logger | None = None):
         self.logger = logger if logger else logging.getLogger(__name__)
 
-    def _extract_gpx_kml_from_zip(self, zip_path: Path, temp_dir: Path) -> list[Path]:
+    def _extract_gpx_kml_from_zip(
+        self, zip_path: Path, temp_dir: Path
+    ) -> list[tuple[Path, FileOrigin]]:
         """Extract supported files to a unique temporary location."""
         extracted_files = []
         archive_dir = temp_dir / zip_path.stem
@@ -39,7 +79,16 @@ class GeoFileManager:
                     if file_info.filename.lower().endswith((".gpx", ".kml")):
                         extracted_path = archive_dir / f"{index}_{Path(file_info.filename).name}"
                         extracted_path.write_bytes(zip_ref.read(file_info.filename))
-                        extracted_files.append(extracted_path)
+                        extracted_files.append(
+                            (
+                                extracted_path,
+                                FileOrigin(
+                                    source_path=zip_path,
+                                    member_name=Path(file_info.filename).name,
+                                    member_index=index,
+                                ),
+                            )
+                        )
             self.logger.info(f"Extracted {len(extracted_files)} GPX/KML files from {zip_path.name}")
         except (OSError, zipfile.BadZipFile, RuntimeError) as error:
             self.logger.error(f"Error extracting ZIP file {zip_path}: {error}")
@@ -112,22 +161,32 @@ class GeoFileManager:
             for child in feature.features:
                 self._process_kml_feature(child, gpx)
 
-    def load_files(self, file_paths: list[Path]) -> dict[Path, GPX]:
-        """Load files from paths; ZIP member paths remain unique per archive."""
-        gpx_data_map = {}
+    def load_files_with_origins(self, file_paths: list[Path]) -> dict[Path, LoadedGPXFile]:
+        """Load supported files and retain stable identities and source provenance."""
+        loaded_files = {}
         with TemporaryDirectory(prefix="gpx_kml_converter_") as temp_path:
             temp_dir = Path(temp_path)
-            all_files_to_process = []
+            all_files_to_process: list[tuple[Path, Path, FileOrigin]] = []
 
             for index, path in enumerate(file_paths):
                 if path.suffix.lower() == ".zip":
-                    all_files_to_process.extend(
-                        self._extract_gpx_kml_from_zip(path, temp_dir / f"archive_{index}")
-                    )
+                    for extracted_path, origin in self._extract_gpx_kml_from_zip(
+                        path, temp_dir / f"archive_{index}"
+                    ):
+                        member_index = origin.member_index
+                        member_name = origin.member_name
+                        if member_index is None or member_name is None:
+                            raise ValueError("ZIP member provenance is incomplete.")
+                        workspace_path = (
+                            path.parent
+                            / f".{path.stem}.workspace"
+                            / f"{member_index}_{Path(member_name).name}"
+                        )
+                        all_files_to_process.append((extracted_path, workspace_path, origin))
                 else:
-                    all_files_to_process.append(path)
+                    all_files_to_process.append((path, path, FileOrigin(path)))
 
-            for file_path in all_files_to_process:
+            for file_path, workspace_path, origin in all_files_to_process:
                 if file_path.suffix.lower() == ".gpx":
                     gpx_obj = self._load_gpx_file(file_path)
                 elif file_path.suffix.lower() == ".kml":
@@ -137,6 +196,12 @@ class GeoFileManager:
                     continue
 
                 if gpx_obj:
-                    gpx_data_map[file_path] = gpx_obj
+                    loaded_files[workspace_path] = LoadedGPXFile(gpx_obj, origin)
 
-        return gpx_data_map
+        return loaded_files
+
+    def load_files(self, file_paths: list[Path]) -> dict[Path, GPX]:
+        """Load GPX objects, preserving stable paths for ZIP members."""
+        return {
+            path: loaded.gpx for path, loaded in self.load_files_with_origins(file_paths).items()
+        }

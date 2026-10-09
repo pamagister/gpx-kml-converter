@@ -44,7 +44,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--output",
         default=argparse.SUPPRESS,
-        help="Output directory, or output GPX file in add-poi mode",
+        help="Override processing output directory, or output GPX file in add-poi mode",
     )
     parser.add_argument(
         "--tolerance",
@@ -175,19 +175,20 @@ def main(argv: list[str] | None = None) -> int:
         if not math.isfinite(tolerance) or tolerance < 0:
             raise ValueError("--tolerance must be a finite, non-negative number of meters.")
 
-        loaded_files = GeoFileManager(logger=logger).load_files(input_paths)
+        loaded_files = GeoFileManager(logger=logger).load_files_with_origins(input_paths)
         if not loaded_files:
             raise ValueError("No valid GPX or KML data could be loaded.")
 
         logger.info(f"Loaded {len(loaded_files)} input files.")
         result_files = process_gpx_files(
-            list(loaded_files.values()),
+            [loaded.gpx for loaded in loaded_files.values()],
             mode=mode,
             output=config_manager.cli.output.value,
             tolerance=tolerance,
             date_format=config_manager.app.date_format.value,
             elevation=config_manager.cli.elevation.value,
             logger=logger,
+            source_origins=[loaded.origin for loaded in loaded_files.values()],
         )
         if not result_files:
             raise RuntimeError(f"The {mode} operation did not produce any output files.")

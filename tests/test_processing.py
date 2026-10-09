@@ -1,12 +1,15 @@
 import logging
+import os
 import tempfile
 import unittest
+import zipfile
 from pathlib import Path
 
 import gpxpy
 from gpxpy.gpx import GPX, GPXTrack, GPXTrackPoint, GPXTrackSegment, GPXWaypoint
 
 from gpx_kml_converter.application.processing import process_gpx_files
+from gpx_kml_converter.core.file_loader import FileOrigin, GeoFileManager
 
 
 class UnavailableElevationProvider:
@@ -57,6 +60,120 @@ class TestProcessingService(unittest.TestCase):
         self.assertEqual(saved_points[0].latitude, 50.0)
         self.assertEqual(saved_points[-1].longitude, 10.001)
         self.assertEqual(len(source.tracks[0].segments[0].points), 3)
+
+    def test_default_compress_output_uses_source_basename_and_keeps_source_unchanged(self):
+        source_path = Path(self.temp_dir.name) / "ride.gpx"
+        source = GPX()
+        track = GPXTrack(name="Ride")
+        segment = GPXTrackSegment()
+        segment.points.extend(
+            [
+                GPXTrackPoint(latitude=50.0, longitude=10.0),
+                GPXTrackPoint(latitude=50.00001, longitude=10.0005),
+                GPXTrackPoint(latitude=50.0, longitude=10.001),
+            ]
+        )
+        track.segments.append(segment)
+        source.tracks.append(track)
+        source_path.write_text(source.to_xml(), encoding="utf-8")
+        original_contents = source_path.read_bytes()
+        loaded = GeoFileManager(self.logger).load_files_with_origins([source_path])
+
+        outputs = process_gpx_files(
+            [next(iter(loaded.values())).gpx],
+            mode="compress",
+            output=None,
+            tolerance=10,
+            date_format="%Y-%m-%d",
+            elevation=False,
+            logger=self.logger,
+            source_origins=[next(iter(loaded.values())).origin],
+        )
+
+        output_path = next(iter(outputs))
+        self.assertEqual(output_path.parent, source_path.parent)
+        self.assertRegex(output_path.name, r"^ride_processed_\d{4}-\d{2}-\d{2}_\d{6}\.gpx$")
+        self.assertEqual(source_path.read_bytes(), original_contents)
+        saved_gpx = gpxpy.parse(output_path.read_text(encoding="utf-8"))
+        self.assertEqual(saved_gpx.tracks[0].name, "Ride")
+
+    def test_zip_processing_uses_archive_folder_and_member_basename(self):
+        source_path = Path(__file__).parent.parent / "examples" / "kuhkopfsteig.gpx"
+        archive_path = Path(self.temp_dir.name) / "trip.zip"
+        with zipfile.ZipFile(archive_path, "w") as archive:
+            archive.write(source_path, "routes/ride.gpx")
+        original_contents = archive_path.read_bytes()
+        loaded = GeoFileManager(self.logger).load_files_with_origins([archive_path])
+        loaded_file = next(iter(loaded.values()))
+
+        outputs = process_gpx_files(
+            [loaded_file.gpx],
+            mode="compress",
+            output=None,
+            tolerance=10,
+            date_format="%Y-%m-%d",
+            elevation=False,
+            logger=self.logger,
+            source_origins=[loaded_file.origin],
+        )
+
+        output_path = next(iter(outputs))
+        self.assertEqual(output_path.parent, Path(self.temp_dir.name) / "trip")
+        self.assertRegex(output_path.name, r"^ride_processed_\d{4}-\d{2}-\d{2}_\d{6}\.gpx$")
+        self.assertEqual(archive_path.read_bytes(), original_contents)
+        self.assertTrue(gpxpy.parse(output_path.read_text(encoding="utf-8")).tracks)
+
+    def test_default_merge_writes_flat_timestamped_filename(self):
+        first = GPX()
+        first.waypoints.append(GPXWaypoint(latitude=48.0, longitude=11.0, name="Start"))
+
+        original_directory = Path.cwd()
+        try:
+            os.chdir(self.temp_dir.name)
+            outputs = process_gpx_files(
+                [first],
+                mode="merge",
+                output=None,
+                tolerance=10,
+                date_format="%Y-%m-%d",
+                elevation=False,
+                logger=self.logger,
+            )
+        finally:
+            os.chdir(original_directory)
+
+        output_path = next(iter(outputs))
+        self.assertEqual(output_path.parent, Path(self.temp_dir.name))
+        self.assertRegex(output_path.name, r"^gpx_processed_\d{4}-\d{2}-\d{2}_\d{6}\.gpx$")
+        self.assertEqual(
+            gpxpy.parse(output_path.read_text(encoding="utf-8")).waypoints[0].name, "Start"
+        )
+
+    def test_duplicate_source_names_in_one_batch_get_distinct_outputs(self):
+        first = GPX()
+        second = GPX()
+        origins = [
+            FileOrigin(Path(self.temp_dir.name) / "same.gpx"),
+            FileOrigin(Path(self.temp_dir.name) / "same.kml"),
+        ]
+
+        outputs = process_gpx_files(
+            [first, second],
+            mode="compress",
+            output=None,
+            tolerance=10,
+            date_format="%Y-%m-%d",
+            elevation=False,
+            logger=self.logger,
+            source_origins=origins,
+        )
+
+        self.assertEqual(len(outputs), 2)
+        names = [path.name for path in outputs]
+        self.assertRegex(names[0], r"^same_processed_\d{4}-\d{2}-\d{2}_\d{6}\.gpx$")
+        self.assertRegex(names[1], r"^same_processed_\d{4}-\d{2}-\d{2}_\d{6}_2\.gpx$")
+        for path in outputs:
+            self.assertIsInstance(gpxpy.parse(path.read_text(encoding="utf-8")), GPX)
 
     def test_generated_gpx_can_be_reused_in_a_second_processing_stage(self):
         source = GPX()
