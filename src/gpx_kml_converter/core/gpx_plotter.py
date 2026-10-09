@@ -266,15 +266,8 @@ class GPXPlotter:
 
         return spacing
 
-    def _find_track_by_name(self, gpx_data: GPX, track_name: str):
-        """Find a specific track by name in GPX data."""
-        for track in gpx_data.tracks:
-            if track.name == track_name:
-                return track
-        return None
-
-    def plot_gpx_map(self, gpx_data: GPX):
-        """Plots GPX data (tracks, routes, waypoints) on the Matplotlib canvas."""
+    def plot_gpx_map(self, gpx_data: GPX, active_artifact: tuple[str, int] | None = None):
+        """Plot a GPX file and highlight an active track, route, or waypoint."""
         self._clear_axes_common()
 
         # Plot country borders if loaded
@@ -286,35 +279,61 @@ class GPXPlotter:
         all_points_coords = []  # Store (lon, lat) for setting limits
 
         # Plot Tracks
-        for track in gpx_data.tracks:
+        for track_index, track in enumerate(gpx_data.tracks):
+            is_active = active_artifact == ("track", track_index)
             for segment in track.segments:
                 if segment.points:
                     lats = [p.latitude for p in segment.points if p.latitude is not None]
                     lons = [p.longitude for p in segment.points if p.longitude is not None]
                     if lats and lons:
                         self.ax.plot(
-                            lons, lats, color="darkblue", linewidth=1.5, zorder=2
-                        )  # Dark blue for tracks
+                            lons,
+                            lats,
+                            color="darkorange" if is_active else "darkblue",
+                            linewidth=2.8 if is_active else 1.5,
+                            zorder=3 if is_active else 2,
+                        )
                         all_points_coords.extend(zip(lons, lats))
 
         # Plot Routes
-        for route in gpx_data.routes:
+        for route_index, route in enumerate(gpx_data.routes):
+            is_active = active_artifact == ("route", route_index)
             if route.points:
                 lats = [p.latitude for p in route.points if p.latitude is not None]
                 lons = [p.longitude for p in route.points if p.longitude is not None]
                 if lats and lons:
                     self.ax.plot(
-                        lons, lats, color="darkblue", linewidth=1.5, linestyle="--", zorder=2
-                    )  # Dark blue, dashed for routes
+                        lons,
+                        lats,
+                        color="darkorange" if is_active else "darkblue",
+                        linewidth=2.8 if is_active else 1.5,
+                        linestyle="--",
+                        zorder=3 if is_active else 2,
+                    )
                     all_points_coords.extend(zip(lons, lats))
 
         # Plot Waypoints
-        waypoint_lons = [p.longitude for p in gpx_data.waypoints if p.longitude is not None]
-        waypoint_lats = [p.latitude for p in gpx_data.waypoints if p.latitude is not None]
+        waypoint_lons = []
+        waypoint_lats = []
+        active_waypoint = None
+        for index, waypoint in enumerate(gpx_data.waypoints):
+            if waypoint.latitude is None or waypoint.longitude is None:
+                continue
+            waypoint_lons.append(waypoint.longitude)
+            waypoint_lats.append(waypoint.latitude)
+            if active_artifact == ("waypoint", index):
+                active_waypoint = (waypoint.longitude, waypoint.latitude)
         if waypoint_lons and waypoint_lats:
-            self.ax.scatter(
-                waypoint_lons, waypoint_lats, color="red", s=10, zorder=3
-            )  # Red small dots for waypoints
+            self.ax.scatter(waypoint_lons, waypoint_lats, color="red", s=10, zorder=3)
+            if active_waypoint is not None:
+                self.ax.scatter(
+                    [active_waypoint[0]],
+                    [active_waypoint[1]],
+                    color="darkorange",
+                    edgecolors="black",
+                    s=48,
+                    zorder=4,
+                )
             all_points_coords.extend(zip(waypoint_lons, waypoint_lats))
 
         # Auto-adjust limits based on plotted data, or set default if no data
@@ -326,18 +345,19 @@ class GPXPlotter:
         )  # Hide axis labels and ticks
         self.canvas.draw()  # Redraw the canvas
 
-    def plot_track_profile(self, gpx_data: GPX, track_name: str):
+    def plot_track_profile(self, gpx_data: GPX, track_index: int):
         """
         Plots elevation profile of a specific track.
         X-axis: Distance in kilometers
         Y-axis: Elevation in meters
         """
-        # Find the specific track
-        track = self._find_track_by_name(gpx_data, track_name)
-        if not track:
-            self.logger.warning(f"Track '{track_name}' not found in GPX data.")
-            self.clear_plot()
+        if not 0 <= track_index < len(gpx_data.tracks):
+            self.logger.warning(f"Track index {track_index} not found in GPX data.")
+            self.clear_profile()
             return
+
+        track = gpx_data.tracks[track_index]
+        track_name = track.name or f"Track {track_index + 1}"
 
         # Collect all points from all segments of the track
         all_points = []
@@ -346,7 +366,7 @@ class GPXPlotter:
 
         if not all_points:
             self.logger.warning(f"No points found in track '{track_name}'.")
-            self.clear_plot()
+            self.clear_profile()
             return
 
         # Filter points with valid coordinates and elevation
@@ -360,7 +380,7 @@ class GPXPlotter:
             self.logger.warning(
                 f"Not enough valid points with elevation data in track '{track_name}'."
             )
-            self.clear_plot()
+            self.clear_profile()
             return
 
         # Calculate cumulative distances and collect elevations
@@ -499,4 +519,17 @@ class GPXPlotter:
         self.ax.set_ylim(35, 65)
         self.current_xlim = (-10, 30)
         self.current_ylim = (35, 65)
+        self.canvas.draw_idle()
+
+    def clear_profile(self):
+        """Show an informative empty state in the elevation-profile inspector."""
+        self._clear_axes_common()
+        self.ax.set_title("Select a track to view its elevation profile")
+        self.ax.set_xlabel("Distance (km)")
+        self.ax.set_ylabel("Height (m)")
+        self.ax.set_xlim(0, 1)
+        self.ax.set_ylim(0, 1)
+        self.ax.set_aspect("auto")
+        self.current_xlim = (0, 1)
+        self.current_ylim = (0, 1)
         self.canvas.draw_idle()

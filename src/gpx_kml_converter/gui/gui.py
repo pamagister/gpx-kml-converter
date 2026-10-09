@@ -17,8 +17,6 @@ from functools import partial
 from pathlib import Path
 from tkinter import filedialog, font, messagebox, ttk
 
-import gpxpy  # Import gpxpy directly for metadata extraction
-
 # Matplotlib imports for plotting
 import matplotlib.pyplot as plt
 import ttkbootstrap
@@ -36,6 +34,16 @@ from gpx_kml_converter.core.logging import (
     disconnect_gui_logging,
     get_logger,
     initialize_logging,
+)
+from gpx_kml_converter.gui.artifacts import (
+    ArtifactIdentity,
+    FileCollection,
+    FileSummary,
+    artifact_label,
+    artifact_metadata,
+    plot_reference,
+    selected_input_paths,
+    summarize_gpx,
 )
 
 
@@ -170,9 +178,13 @@ class MainGui:
         # File lists - now hold Path to GPX object mapping
         self.gpx_input: dict[Path, GPX] = {}
         self.gpx_output: dict[Path, GPX] = {}
-        self._last_selected_file_path = (
-            None  # To store path of file currently shown in metadata/plot
-        )
+        self._tree_identity: dict[str, ArtifactIdentity] = {}
+        self._identity_tree_item: dict[ArtifactIdentity, str] = {}
+        self._file_summaries: dict[tuple[FileCollection, Path], FileSummary] = {}
+        self._tree_item_counter = 0
+        self._active_identity: ArtifactIdentity | None = None
+        self._active_profile_identity: ArtifactIdentity | None = None
+        self.batch_status_var = tk.StringVar(master=self.root)
 
         # Initialize GeoFileManager
         self.geo_file_manager = GeoFileManager(logger=self.logger)
@@ -218,6 +230,8 @@ class MainGui:
             self.canvas1,
             self.logger,
         )
+        self._rebuild_artifact_tree()
+        self._show_empty_inspector("Open files to browse tracks, routes, and POIs.")
 
     def _build_widgets(self):
         """Build the main GUI widgets."""
@@ -237,133 +251,92 @@ class MainGui:
         main_lower = ttk.Frame(main_vertical_paned)
         main_vertical_paned.add(main_lower, weight=1)
 
-        # Upper section horizontal layout
         upper_horizontal_paned = ttk.PanedWindow(main_upper, orient=tk.HORIZONTAL)
         upper_horizontal_paned.pack(fill=tk.BOTH, expand=True)
 
-        # Files panel (left side of upper section)
-        files_panel = ttk.Frame(upper_horizontal_paned)
-        upper_horizontal_paned.add(files_panel, weight=1)
+        workspace_frame = ttk.LabelFrame(upper_horizontal_paned, text="Workspace")
+        upper_horizontal_paned.add(workspace_frame, weight=2)
+        metadata_frame = ttk.LabelFrame(upper_horizontal_paned, text="Inspector")
+        upper_horizontal_paned.add(metadata_frame, weight=2)
+        map_frame = ttk.LabelFrame(upper_horizontal_paned, text="Map")
+        upper_horizontal_paned.add(map_frame, weight=5)
 
-        # Plot frame (right side of upper section)
-        plot_frame = ttk.LabelFrame(upper_horizontal_paned, text="Map Visualization")
-        upper_horizontal_paned.add(plot_frame, weight=1)
+        profile_plot_frame = ttk.LabelFrame(main_lower, text="Elevation Profile")
+        profile_plot_frame.pack(fill=tk.BOTH, expand=True)
 
-        # Files panel horizontal layout
-        files_horizontal_paned = ttk.PanedWindow(files_panel, orient=tk.HORIZONTAL)
-        files_horizontal_paned.pack(fill=tk.BOTH, expand=True)
-
-        # Input files frame (left in files panel)
-        input_file_frame = ttk.LabelFrame(files_horizontal_paned, text="Input Files")
-        files_horizontal_paned.add(input_file_frame, weight=1)
-
-        # Keep enough room for readable controls between the file lists.
-        button_frame = ttk.Frame(files_horizontal_paned)
-        button_frame.configure(width=210)
-        files_horizontal_paned.add(button_frame, weight=0)
-
-        # Output files frame (right in files panel)
-        output_file_frame = ttk.LabelFrame(files_horizontal_paned, text="Generated Files")
-        files_horizontal_paned.add(output_file_frame, weight=1)
-
-        # Lower section horizontal layout
-        lower_horizontal_paned = ttk.PanedWindow(main_lower, orient=tk.HORIZONTAL)
-        lower_horizontal_paned.pack(fill=tk.BOTH, expand=True)
-
-        # Metadata frame (left in lower section)
-        metadata_frame = ttk.LabelFrame(lower_horizontal_paned, text="File Metadata")
-        lower_horizontal_paned.add(metadata_frame, weight=1)
-
-        # Tracks listbox frame (middle in lower section)
-        tracks_listbox_frame = ttk.LabelFrame(lower_horizontal_paned, text="Tracks")
-        lower_horizontal_paned.add(tracks_listbox_frame, weight=1)
-
-        # Profile plot frame (right in lower section)
-        profile_plot_frame = ttk.LabelFrame(lower_horizontal_paned, text="Profile Plot")
-        lower_horizontal_paned.add(profile_plot_frame, weight=1)
-
-        # Build Input File list
-        self._build_input_file_list(input_file_frame)
-
-        # Build Output File list
-        self._build_output_file_list(output_file_frame)
-
-        # Build Button panel
-        self._build_button_panel(button_frame)
-
-        # Build Metadata display
+        self._build_workspace_browser(workspace_frame)
         self._build_metadata_display(metadata_frame)
-
-        # Build Matplotlib Plot
-        self._build_plot_display(plot_frame)
-
-        # Build Tracks listbox (placeholder for now)
-        self._build_tracks_listbox(tracks_listbox_frame)
-
-        # Build Profile plot (placeholder for now)
+        self._build_plot_display(map_frame)
         self._build_profile_plot(profile_plot_frame)
 
-    def _build_input_file_list(self, parent_frame):
-        """Build the input file listbox with scrollbars."""
+    def _build_workspace_browser(self, parent_frame):
         controls = ttk.Frame(parent_frame)
         controls.pack(fill=tk.X, padx=4, pady=4)
-        ttk.Button(controls, text="Select All Inputs", command=self._select_all_input_files).pack(
-            side=tk.LEFT
+        controls.columnconfigure(0, weight=1)
+        controls.columnconfigure(1, weight=1)
+        ttk.Button(controls, text="Open Files", command=self._open_files).grid(
+            row=0, column=0, sticky="ew"
         )
-
-        self.input_file_listbox = self.__build_listbox(
-            parent_frame, lambda event: self._on_file_selection(event, self.gpx_input)
+        ttk.Button(controls, text="Select All Inputs", command=self._select_all_input_files).grid(
+            row=0, column=1, sticky="ew", padx=(4, 0)
         )
-        self.input_file_listbox.bind(
-            "<Double-Button-1>", lambda event: self._open_selected_file(event, self.gpx_input)
-        )
-
-    def _build_output_file_list(self, parent_frame):
-        """Build the output file listbox with scrollbars."""
-        controls = ttk.Frame(parent_frame)
-        controls.pack(fill=tk.X, padx=4, pady=4)
         ttk.Button(
             controls,
             text="Use Selected Results as Inputs",
             command=self._use_selected_outputs_as_inputs,
-        ).pack(side=tk.LEFT)
+        ).grid(row=1, column=0, columnspan=2, sticky="ew", pady=(4, 0))
 
-        self.output_file_listbox = self.__build_listbox(
-            parent_frame, lambda event: self._on_file_selection(event, self.gpx_output)
+        tree_frame = ttk.Frame(parent_frame)
+        tree_frame.pack(fill=tk.BOTH, expand=True, padx=4, pady=(0, 4))
+        self.artifact_tree = ttk.Treeview(
+            tree_frame, selectmode="extended", show="tree", takefocus=True
         )
-        self.output_file_listbox.bind(
-            "<Double-Button-1>", lambda event: self._open_selected_file(event, self.gpx_output)
+        vertical_scrollbar = ttk.Scrollbar(
+            tree_frame, orient="vertical", command=self.artifact_tree.yview
         )
+        horizontal_scrollbar = ttk.Scrollbar(
+            tree_frame, orient="horizontal", command=self.artifact_tree.xview
+        )
+        self.artifact_tree.configure(
+            yscrollcommand=vertical_scrollbar.set,
+            xscrollcommand=horizontal_scrollbar.set,
+        )
+        self.artifact_tree.grid(row=0, column=0, sticky="nsew")
+        vertical_scrollbar.grid(row=0, column=1, sticky="ns")
+        horizontal_scrollbar.grid(row=1, column=0, sticky="ew")
+        tree_frame.grid_rowconfigure(0, weight=1)
+        tree_frame.grid_columnconfigure(0, weight=1)
+        self.artifact_tree.bind("<<TreeviewSelect>>", self._on_browser_selection)
+        self.artifact_tree.bind("<Double-Button-1>", self._open_selected_tree_file)
 
-    def _build_button_panel(self, parent_frame):
-        """Build the button panel with fixed width."""
-        # Configure fixed width
-        parent_frame.pack_propagate(False)
-        parent_frame.configure(width=210)
+        self.batch_status_label = ttk.Label(
+            parent_frame, textvariable=self.batch_status_var, anchor=tk.W
+        )
+        self.batch_status_label.pack(fill=tk.X, padx=4, pady=(0, 4))
+        self._build_processing_controls(parent_frame)
 
-        open_button = ttk.Button(parent_frame, text="Open Files", command=self._open_files)
-        ToolTip(open_button, "Open Files")
-        open_button.pack(pady=8, fill=tk.X)
+    def _build_processing_controls(self, parent_frame):
+        """Build processing actions below the artifact tree."""
 
         self.run_buttons = {}
         for mode, label in self.processing_modes:
             button = ttk.Button(
-                parent_frame, text=label, command=partial(self._run_processing, mode=mode)
+                parent_frame,
+                text=label,
+                command=partial(self._run_processing, mode=mode),
             )
-            button.pack(pady=1, fill=tk.X)
+            button.pack(pady=1, padx=4, fill=tk.X)
             ToolTip(button, label)
             self.run_buttons[mode] = button
 
         self.clear_files_button = ttk.Button(
-            parent_frame,
-            text="Clear Workspace",
-            command=self._clear_files,
+            parent_frame, text="Clear Workspace", command=self._clear_files
         )
         ToolTip(self.clear_files_button, "Clear all input and generated files")
-        self.clear_files_button.pack(pady=8, fill=tk.X)
+        self.clear_files_button.pack(pady=4, padx=4, fill=tk.X)
 
         self.progress = ttk.Progressbar(parent_frame, mode="indeterminate")
-        self.progress.pack(pady=0, fill=tk.X)
+        self.progress.pack(pady=(0, 4), padx=4, fill=tk.X)
 
     def _build_metadata_display(self, parent_frame):
         """Build the metadata display with scrollbars."""
@@ -411,41 +384,6 @@ class MainGui:
         self.toolbar.update()
         self.toolbar.grid(row=1, column=0, sticky="ew")  # Position toolbar below canvas
         self.canvas_widget.config(cursor="hand2")  # Change cursor when hovering over plot
-
-    def _build_tracks_listbox(self, parent_frame):
-        """Build the tracks listbox"""
-        self.tracks_listbox = self.__build_listbox(
-            parent_frame, lambda event: self._on_track_selection(event)
-        )
-
-    @staticmethod
-    def __build_listbox(parent_frame, evt) -> tk.Listbox:
-        tracks_listbox_frame = ttk.Frame(parent_frame)
-        tracks_listbox_frame.pack(fill=tk.BOTH, expand=True, padx=0, pady=0)
-        _listbox = tk.Listbox(tracks_listbox_frame, selectmode=tk.EXTENDED)
-
-        # Vertikale Scrollbar
-        input_file_v_scrollbar = ttk.Scrollbar(
-            tracks_listbox_frame, orient="vertical", command=_listbox.yview
-        )
-        _listbox.configure(yscrollcommand=input_file_v_scrollbar.set)
-
-        # Horizontale Scrollbar
-        input_file_h_scrollbar = ttk.Scrollbar(
-            tracks_listbox_frame, orient="horizontal", command=_listbox.xview
-        )
-        _listbox.configure(xscrollcommand=input_file_h_scrollbar.set)
-
-        # Grid layout für Listbox und Scrollbars
-        _listbox.grid(row=0, column=0, sticky="nsew")
-        input_file_v_scrollbar.grid(row=0, column=1, sticky="ns")
-        input_file_h_scrollbar.grid(row=1, column=0, sticky="ew")
-
-        tracks_listbox_frame.grid_rowconfigure(0, weight=1)
-        tracks_listbox_frame.grid_columnconfigure(0, weight=1)
-
-        _listbox.bind("<<ListboxSelect>>", evt)
-        return _listbox
 
     def _build_profile_plot(self, parent_frame):
         """Build the matplotlib plot display."""
@@ -584,22 +522,29 @@ class MainGui:
         self.logger.debug("Log display cleared")
 
     def _clear_files(self):
-        """Clear the input file list."""
+        """Clear all files from the workspace."""
         self.gpx_input.clear()
         self.gpx_output.clear()
-        self.output_file_listbox.delete(0, tk.END)
-        self.input_file_listbox.delete(0, tk.END)
-        self.tracks_listbox.delete(0, tk.END)
-        self.logger.info("All file file lists cleared")
-        self._clear_metadata_and_plot()  # Clear plot and metadata when output files are cleared
+        self._file_summaries.clear()
+        self._rebuild_artifact_tree()
+        self._show_empty_inspector()
+        self.logger.info("Workspace cleared")
 
     def _select_all_input_files(self):
         """Select every loaded input so batch processing is explicit and quick."""
-        self.input_file_listbox.selection_set(0, tk.END)
+        item_ids = [
+            self._identity_tree_item[ArtifactIdentity("input", path, "file")]
+            for path in self.gpx_input
+        ]
+        self.artifact_tree.selection_set(*item_ids)
+        if item_ids:
+            self.artifact_tree.focus(item_ids[-1])
+            self.artifact_tree.see(item_ids[-1])
+        self._on_browser_selection()
 
     @staticmethod
     def _selected_paths(file_map: dict[Path, GPX], selected_indices: tuple[int, ...]) -> list[Path]:
-        """Resolve listbox positions to paths; an empty selection means all files."""
+        """Resolve selected positions to paths; an empty selection means all files."""
         paths = list(file_map)
         if not selected_indices:
             return paths
@@ -619,100 +564,194 @@ class MainGui:
 
     def _use_selected_outputs_as_inputs(self):
         """Add selected generated files to the input workspace for another processing step."""
-        selected_indices = self.output_file_listbox.curselection()
-        if not selected_indices:
-            messagebox.showwarning("Warning", "Select at least one generated result first.")
-            return
-        selected_paths = self._selected_paths(self.gpx_output, selected_indices)
+        selected_paths = self._selected_tree_file_paths("output")
         if not selected_paths:
+            messagebox.showwarning("Warning", "Select at least one generated result first.")
             return
 
         added_paths = self._add_results_to_inputs(self.gpx_input, self.gpx_output, selected_paths)
-        for path in added_paths:
-            self.input_file_listbox.insert(tk.END, f"{path.name} ({path})")
-
-        input_indices = [list(self.gpx_input).index(path) for path in selected_paths]
-        self.input_file_listbox.selection_clear(0, tk.END)
-        for index in input_indices:
-            self.input_file_listbox.selection_set(index)
-        self._update_selected_file_display(self.input_file_listbox, self.gpx_input)
-        self.logger.info(f"Added {len(selected_paths)} generated result(s) to the input workspace.")
+        self._rebuild_artifact_tree()
+        input_items = [
+            self._identity_tree_item[ArtifactIdentity("input", path, "file")]
+            for path in (added_paths or selected_paths)
+            if path in self.gpx_input
+        ]
+        self.artifact_tree.selection_set(*input_items)
+        if input_items:
+            self.artifact_tree.focus(input_items[0])
+            self.artifact_tree.see(input_items[0])
+        self._on_browser_selection()
+        self.logger.info(f"Added {len(added_paths)} generated result(s) to the input workspace.")
 
     def _remove_selected_input_files(self):
-        """Remove selected files from the input file list."""
-        selected_indices = self.input_file_listbox.curselection()
-        if not selected_indices:
+        """Remove selected input file nodes from the workspace."""
+        paths_to_remove = self._selected_tree_file_paths("input")
+        if not paths_to_remove:
             messagebox.showwarning("Warning", "No files selected to remove!")
             return
 
-        paths_to_remove = self._selected_paths(self.gpx_input, selected_indices)
-        for i in reversed(selected_indices):
-            path = list(self.gpx_input)[i]
-
-            # If the removed file was the one currently displayed, clear metadata/plot
-            if path == self._last_selected_file_path:
-                self._clear_metadata_and_plot()
-            self.input_file_listbox.delete(i)
-
         for path in paths_to_remove:
-            if path in self.gpx_input:
-                del self.gpx_input[path]
+            del self.gpx_input[path]
+            self._file_summaries.pop(("input", path), None)
+        self._rebuild_artifact_tree()
+        self._show_empty_inspector()
+        self.logger.info(f"Removed {len(paths_to_remove)} selected input files.")
 
-        self.logger.info(f"Removed {len(selected_indices)} selected input files.")
+    def _new_tree_item_id(self) -> str:
+        self._tree_item_counter += 1
+        return f"artifact-{self._tree_item_counter}"
 
-    def _on_file_selection(self, event, gpx_dict_source: dict[Path, GPX]):
-        """Handle selection change in file listboxes to update metadata/plot."""
-        widget = event.widget
-        self._update_selected_file_display(widget, gpx_dict_source)
+    def _rebuild_artifact_tree(self):
+        """Refresh browser rows after workspace contents change, not on selection."""
+        self.artifact_tree.delete(*self.artifact_tree.get_children(""))
+        self._tree_identity.clear()
+        self._identity_tree_item.clear()
+        roots = {
+            "input": self.artifact_tree.insert(
+                "", tk.END, iid="workspace-inputs", text=f"Inputs ({len(self.gpx_input)})"
+            ),
+            "output": self.artifact_tree.insert(
+                "", tk.END, iid="workspace-generated", text=f"Generated ({len(self.gpx_output)})"
+            ),
+        }
+        self.artifact_tree.item(roots["input"], open=True)
+        self.artifact_tree.item(roots["output"], open=True)
 
-    def _on_track_selection(self, event):
-        """Handle selection change in file listboxes to update metadata/plot."""
-        listbox_widget = event.widget
-        self._update_profile(listbox_widget)
+        for collection, file_map in (("input", self.gpx_input), ("output", self.gpx_output)):
+            if not file_map:
+                self.artifact_tree.insert(
+                    roots[collection],
+                    tk.END,
+                    iid=f"empty-{collection}",
+                    text="No files loaded",
+                )
+            for file_path, gpx in file_map.items():
+                cache_key = (collection, file_path)
+                if cache_key not in self._file_summaries:
+                    self._file_summaries[cache_key] = summarize_gpx(gpx)
+                summary = self._file_summaries[cache_key]
+                file_identity = ArtifactIdentity(collection, file_path, "file")
+                file_item = self._insert_artifact(
+                    roots[collection],
+                    file_identity,
+                    f"{file_path.name} ({summary.artifact_count})",
+                )
+                self.artifact_tree.item(file_item, open=True)
+                for kind, artifacts in (
+                    ("track", gpx.tracks),
+                    ("route", gpx.routes),
+                    ("waypoint", gpx.waypoints),
+                ):
+                    for index, _artifact in enumerate(artifacts):
+                        identity = ArtifactIdentity(collection, file_path, kind, index)
+                        self._insert_artifact(
+                            file_item,
+                            identity,
+                            artifact_label(gpx, identity),
+                        )
 
-    def _update_profile(self, listbox_widget):
-        selected_indices = listbox_widget.curselection()
-        if selected_indices:
-            index = selected_indices[0]
-            track_name = listbox_widget.get(index)
-            # Plotting
-            self.gpx_profile_plotter.plot_track_profile(self.selected_gpx, track_name)
+        self._update_batch_status()
 
-    def _update_tracks(self, gpx_obj: GPX):
-        """Separate logic to update display based on listbox selection."""
-        new_tracks = [track.name for track in gpx_obj.tracks]
-        if list(self.tracks_listbox.get(0, tk.END)) == new_tracks:
-            return  # kein Update nötig
+    def _insert_artifact(self, parent: str, identity: ArtifactIdentity, label: str) -> str:
+        item_id = self._new_tree_item_id()
+        self.artifact_tree.insert(parent, tk.END, iid=item_id, text=label)
+        self._tree_identity[item_id] = identity
+        self._identity_tree_item[identity] = item_id
+        return item_id
 
-        self.tracks_listbox.delete(0, tk.END)
-        self.selected_gpx = gpx_obj
-        for track_name in new_tracks:
-            self.tracks_listbox.insert(tk.END, track_name or "<Unnamed>")
+    def _selected_tree_file_paths(self, collection: FileCollection) -> list[Path]:
+        selected = {
+            identity.file_path
+            for item_id in self.artifact_tree.selection()
+            if (identity := self._tree_identity.get(item_id)) is not None
+            and identity.kind == "file"
+            and identity.collection == collection
+        }
+        file_map = self.gpx_input if collection == "input" else self.gpx_output
+        return [path for path in file_map if path in selected]
 
-    def _update_selected_file_display(self, listbox_widget, gpx_dict_source: dict[Path, GPX]):
-        """Separate logic to update display based on listbox selection."""
-        selected_indices = listbox_widget.curselection()
-        if selected_indices:
-            index = selected_indices[0]
-            paths = list(gpx_dict_source)
-            if index < len(paths):
-                self._parse_and_display_file(paths[index], gpx_dict_source)
+    def _selected_input_paths(self) -> list[Path]:
+        selected_identities = [
+            self._tree_identity[item_id]
+            for item_id in self.artifact_tree.selection()
+            if item_id in self._tree_identity
+        ]
+        return selected_input_paths(self.gpx_input, selected_identities)
+
+    def _update_batch_status(self):
+        selected_count = len(self._selected_tree_file_paths("input"))
+        total_count = len(self.gpx_input)
+        if selected_count:
+            self.batch_status_var.set(f"Batch: {selected_count} of {total_count} input files")
         else:
-            pass
-            # do not clear map data if focus is lost
-            # self._clear_metadata_and_plot()
+            self.batch_status_var.set(
+                f"Batch: all {total_count} input files (no input files selected)"
+            )
 
-    def _open_selected_file(self, event, gpx_dict_source: dict[Path, GPX]):
-        """Opens the selected file in the system's default application or explorer.
-        Also triggers parsing and display for the selected file."""
-        selection_index = event.widget.nearest(event.y)
-        if selection_index == -1:  # No item clicked
+    def _on_browser_selection(self, _event=None):
+        self._update_batch_status()
+        item_id = self.artifact_tree.focus()
+        identity = self._tree_identity.get(item_id)
+        if identity is None:
+            if self._active_identity is not None:
+                self._show_empty_inspector()
+            return
+        if identity == self._active_identity:
             return
 
-        paths = list(gpx_dict_source)
-        if selection_index >= len(paths):
+        file_map = self.gpx_input if identity.collection == "input" else self.gpx_output
+        gpx = file_map.get(identity.file_path)
+        if gpx is None:
+            self.logger.error(f"GPX object not found for path: {identity.file_path}")
+            self._show_empty_inspector("The selected GPX data is no longer available.")
             return
-        file_path = paths[selection_index]
+
+        self._active_identity = identity
+        self.metadata_text.config(state=tk.NORMAL)
+        self.metadata_text.delete("1.0", tk.END)
+        self.metadata_text.insert(
+            tk.END,
+            "\n".join(
+                f"{label}: {value}"
+                for label, value in artifact_metadata(
+                    gpx,
+                    identity,
+                    self._file_summaries.get((identity.collection, identity.file_path)),
+                )
+            ),
+        )
+        self.metadata_text.config(state=tk.DISABLED)
+
+        artifact_ref = plot_reference(identity)
+        self.gpx_map_plotter.plot_gpx_map(gpx, artifact_ref)
+
+        if identity.kind == "track":
+            if identity.index is None:
+                raise ValueError("Active track identity is missing its index.")
+            self.gpx_profile_plotter.plot_track_profile(gpx, identity.index)
+            self._active_profile_identity = identity
+        else:
+            self.gpx_profile_plotter.clear_profile()
+            self._active_profile_identity = None
+
+    def _show_empty_inspector(self, message="Select a file or artifact to inspect."):
+        self._active_identity = None
+        self.metadata_text.config(state=tk.NORMAL)
+        self.metadata_text.delete("1.0", tk.END)
+        self.metadata_text.insert(tk.END, message)
+        self.metadata_text.config(state=tk.DISABLED)
+        if self.gpx_map_plotter is not None:
+            self.gpx_map_plotter.clear_plot()
+        if self.gpx_profile_plotter is not None:
+            self.gpx_profile_plotter.clear_profile()
+        self._active_profile_identity = None
+
+    def _open_selected_tree_file(self, event):
+        item_id = self.artifact_tree.identify_row(event.y)
+        identity = self._tree_identity.get(item_id)
+        if identity is None:
+            return
+        file_path = identity.file_path
 
         if not file_path.exists():
             self.logger.error(f"File not found: {file_path}")
@@ -731,11 +770,8 @@ class MainGui:
             self.logger.error(f"Could not open file {file_path.name}: {e}")
             messagebox.showerror("Error", f"Could not open file {file_path.name}: {e}")
 
-        # After opening, also parse and display it in the GUI
-        self._parse_and_display_file(file_path, gpx_dict_source)
-
     def _open_files(self):
-        """Open file dialog and add files to list."""
+        """Open files and add their parsed GPX objects to the workspace."""
         file_paths = filedialog.askopenfilenames(
             title="Select input files",
             filetypes=[
@@ -763,21 +799,18 @@ class MainGui:
         for path, gpx_obj in loaded_gpx_map.items():
             if path not in self.gpx_input:
                 self.gpx_input[path] = gpx_obj
-                self.input_file_listbox.insert(tk.END, f"{path.name} ({path})")
                 new_files_loaded += 1
             else:
                 self.logger.info(f"File {path.name} already loaded. Skipping.")
 
         self.logger.info(f"Loaded {new_files_loaded} new GPX files.")
         if new_files_loaded > 0:
+            self._rebuild_artifact_tree()
             self._select_all_input_files()
-            self._update_selected_file_display(self.input_file_listbox, self.gpx_input)
 
     def _run_processing(self, mode: str):
         """Run the selected processing mode in a separate thread."""
-        selected_paths = self._selected_paths(
-            self.gpx_input, self.input_file_listbox.curselection()
-        )
+        selected_paths = self._selected_input_paths()
         if not selected_paths:
             messagebox.showwarning("Warning", "Load at least one input file to process.")
             return
@@ -789,10 +822,13 @@ class MainGui:
         self.progress.start()
         self.logger.info(f"Starting '{mode}' processing for {len(selected_gpx_objects)} files...")
 
-        # Keep the output model in sync with the results shown in the listbox.
+        # Keep the output model in sync with the generated-results tree.
         self.gpx_output.clear()
-        self.output_file_listbox.delete(0, tk.END)
-        self._clear_metadata_and_plot()
+        self._file_summaries = {
+            key: summary for key, summary in self._file_summaries.items() if key[0] != "output"
+        }
+        self._rebuild_artifact_tree()
+        self._show_empty_inspector()
 
         def processing_thread():
             try:
@@ -821,17 +857,16 @@ class MainGui:
         threading.Thread(target=processing_thread).start()
 
     def _update_gui_after_processing(self, processed_gpx_map: dict[Path, GPX]):
-        """Update GUI elements after processing is complete (refactored version)."""
+        """Publish generated files in the workspace tree."""
         self.gpx_output.update(processed_gpx_map)
+        self._rebuild_artifact_tree()
         if processed_gpx_map:
-            for path in processed_gpx_map.keys():
-                self.output_file_listbox.insert(tk.END, f"{path.name} ({path})")
-
-            self.output_file_listbox.selection_clear(0, tk.END)
-            self.output_file_listbox.selection_set(tk.END)
-
-            # Direkt die extrahierte Logik aufrufen
-            self._update_selected_file_display(self.output_file_listbox, self.gpx_output)
+            last_path = next(reversed(processed_gpx_map))
+            item_id = self._identity_tree_item[ArtifactIdentity("output", last_path, "file")]
+            self.artifact_tree.selection_set(item_id)
+            self.artifact_tree.focus(item_id)
+            self.artifact_tree.see(item_id)
+            self._on_browser_selection()
 
     def _reset_ui_state(self):
         """Reset UI elements after processing completes or fails."""
@@ -840,128 +875,9 @@ class MainGui:
             button.config(state=tk.NORMAL)
         self.clear_files_button.config(state=tk.NORMAL)
 
-    def _parse_and_display_file(self, file_path: Path, gpx_dict_source: dict[Path, GPX]):
-        """Parse the selected GPX/KML file and display its metadata and plot."""
-        self._clear_metadata_and_plot()
-        self._last_selected_file_path = file_path
-
-        gpx_obj = gpx_dict_source.get(file_path)
-
-        if not gpx_obj:
-            self.logger.error(f"GPX object not found for path: {file_path}")
-            self.metadata_text.config(state=tk.NORMAL)
-            self.metadata_text.insert(
-                tk.END, f"Error: Could not load GPX data for {file_path.name}\n"
-            )
-            self.metadata_text.config(state=tk.DISABLED)
-            return
-
-        self.logger.info(f"Displaying metadata and plot for: {file_path.name}")
-        self._display_gpx_metadata(gpx_obj, file_path.name)
-
-        # Plotting
-        self.gpx_map_plotter.plot_gpx_map(gpx_obj)
-
-    def _display_gpx_metadata(self, gpx_obj: GPX, file_name: str):
-        """Display metadata for the given GPX object."""
-        self._update_tracks(gpx_obj)
-        self.metadata_text.config(state=tk.NORMAL)
-        self.metadata_text.delete(1.0, tk.END)  # Clear previous content
-
-        self.metadata_text.insert(tk.END, f"File: {file_name}\n\n")
-        self.metadata_text.insert(tk.END, "--- GPX Metadata ---\n")
-        self.metadata_text.insert(tk.END, f"Creator: {gpx_obj.creator or 'N/A'}\n")
-
-        if gpx_obj.name:
-            self.metadata_text.insert(tk.END, f"Name: {gpx_obj.name}\n")
-        if gpx_obj.description:
-            self.metadata_text.insert(tk.END, f"Description: {gpx_obj.description}\n")
-
-        self.metadata_text.insert(tk.END, "\n--- Tracks ---\n")
-        if not gpx_obj.tracks:
-            self.metadata_text.insert(tk.END, "No tracks found.\n")
-        for i, track in enumerate(gpx_obj.tracks):
-            track_name = track.name or f"Track {i + 1}"
-            distance_2d = track.length_2d()
-            self.metadata_text.insert(tk.END, f"  - {track_name}: {distance_2d / 1000:.1f} km")
-
-            uphill, downhill = None, None
-            try:
-                # Temporary track for elevation calculation
-                temp_track = gpxpy.gpx.GPXTrack()
-                for segment in track.segments:
-                    temp_segment = gpxpy.gpx.GPXTrackSegment()
-                    temp_segment.points.extend(segment.points)
-                    temp_track.segments.append(temp_segment)
-
-                if temp_track.segments:
-                    up_down = temp_track.get_uphill_downhill()
-                    uphill = up_down.uphill
-                    downhill = up_down.downhill
-            except Exception as err:
-                self.logger.debug(
-                    f"Could not calculate uphill/downhill for track {track_name}: {err}"
-                )
-
-            if uphill is not None and downhill is not None:
-                self.metadata_text.insert(tk.END, f" (↑{uphill:.0f}m ↓{downhill:.0f}m)\n")
-            else:
-                self.metadata_text.insert(tk.END, "\n")
-
-        self.metadata_text.insert(tk.END, "\n--- Routes ---\n")
-        if not gpx_obj.routes:
-            self.metadata_text.insert(tk.END, "No routes found.\n")
-        for i, route in enumerate(gpx_obj.routes):
-            route_name = route.name or f"Route {i + 1}"
-            distance_2d = route.length_2d()
-            self.metadata_text.insert(tk.END, f"  - {route_name}: {distance_2d / 1000:.2f} km")
-
-            uphill, downhill = None, None
-            try:
-                # Temporary track for elevation calculation
-                temp_track = gpxpy.gpx.GPXTrack()
-                temp_segment = gpxpy.gpx.GPXTrackSegment()
-                temp_segment.points.extend(route.points)
-                temp_track.segments.append(temp_segment)
-                up_down = temp_track.get_uphill_downhill()
-                uphill = up_down.uphill
-                downhill = up_down.downhill
-            except Exception as err:
-                self.logger.debug(
-                    f"Could not calculate uphill/downhill for route {route_name}: {err}"
-                )
-
-            if uphill is not None and downhill is not None:
-                self.metadata_text.insert(tk.END, f" (↑{uphill:.1f}m ↓{downhill:.1f}m)\n")
-            else:
-                self.metadata_text.insert(tk.END, "\n")
-
-        self.metadata_text.insert(tk.END, "\n--- Waypoints ---\n")
-        if not gpx_obj.waypoints:
-            self.metadata_text.insert(tk.END, "No waypoints found.\n")
-        for i, waypoint in enumerate(gpx_obj.waypoints):
-            waypoint_name = waypoint.name or f"Waypoint {i + 1}"
-            self.metadata_text.insert(
-                tk.END,
-                f"  - {waypoint_name}: Lat {waypoint.latitude:.4f}, Lon {waypoint.longitude:.4f}",
-            )
-            if waypoint.elevation is not None:
-                self.metadata_text.insert(tk.END, f", Alt {waypoint.elevation:.1f}m\n")
-            else:
-                self.metadata_text.insert(tk.END, "\n")
-
-        self.metadata_text.insert(tk.END, "\n")
-
-        self.metadata_text.config(state=tk.DISABLED)  # Disable editing
-
     def _clear_metadata_and_plot(self):
-        """Clear the metadata text area and the plot."""
-        self.metadata_text.config(state=tk.NORMAL)
-        self.metadata_text.delete(1.0, tk.END)
-        self.metadata_text.config(state=tk.DISABLED)
-        self.gpx_map_plotter.clear_plot()
-        """ self.gpx_profile_plotter.clear_plot() """
-        self._last_selected_file_path = None
+        """Clear the active inspector and its visualizations."""
+        self._show_empty_inspector()
 
     def _open_settings(self):
         """Open the settings dialog."""
