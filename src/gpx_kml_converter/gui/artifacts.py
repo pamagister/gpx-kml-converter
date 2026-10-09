@@ -71,6 +71,25 @@ def artifact_label(gpx: GPX, identity: ArtifactIdentity) -> str:
     return f"{label_type} {identity.index + 1}: {artifact.name or '(unnamed)'}"
 
 
+def artifact_groups(
+    gpx: GPX, collection: FileCollection, file_path: Path
+) -> tuple[tuple[str, tuple[ArtifactIdentity, ...]], ...]:
+    """Group file artifacts for display while retaining stable identities."""
+    groups: tuple[tuple[str, ArtifactKind, int], ...] = (
+        ("Tracks", "track", len(gpx.tracks)),
+        ("Routes", "route", len(gpx.routes)),
+        ("POIs", "waypoint", len(gpx.waypoints)),
+    )
+    return tuple(
+        (
+            label,
+            tuple(ArtifactIdentity(collection, file_path, kind, index) for index in range(count)),
+        )
+        for label, kind, count in groups
+        if count
+    )
+
+
 def plot_reference(identity: ArtifactIdentity) -> tuple[PlottedArtifactKind, int] | None:
     """Return the GPX-local plot target for an artifact identity."""
     if identity.kind == "file":

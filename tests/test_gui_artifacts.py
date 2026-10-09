@@ -18,6 +18,7 @@ from matplotlib.figure import Figure
 from gpx_kml_converter.core.gpx_plotter import GPXPlotter
 from gpx_kml_converter.gui.artifacts import (
     ArtifactIdentity,
+    artifact_groups,
     artifact_label,
     artifact_metadata,
     plot_reference,
@@ -100,6 +101,27 @@ class TestGuiArtifacts(unittest.TestCase):
         self.assertEqual(dict(artifact_metadata(self.gpx, second))["Description"], "Second track")
         self.assertEqual(plot_reference(first), ("track", 0))
         self.assertEqual(plot_reference(second), ("track", 1))
+
+    def test_artifact_browser_groups_keep_collection_file_and_index_identity(self):
+        groups = artifact_groups(self.gpx, "output", Path("result.gpx"))
+
+        self.assertEqual([label for label, _identities in groups], ["Tracks", "Routes", "POIs"])
+        self.assertEqual(
+            [
+                (identity.collection, identity.file_path, identity.kind, identity.index)
+                for _label, identities in groups
+                for identity in identities
+            ],
+            [
+                ("output", Path("result.gpx"), "track", 0),
+                ("output", Path("result.gpx"), "track", 1),
+                ("output", Path("result.gpx"), "route", 0),
+                ("output", Path("result.gpx"), "waypoint", 0),
+            ],
+        )
+
+    def test_artifact_browser_omits_empty_groups(self):
+        self.assertEqual(artifact_groups(GPX(), "input", Path("empty.gpx")), ())
 
     def test_route_and_waypoint_metadata_and_plot_targets_use_indexes(self):
         route = ArtifactIdentity("output", Path("result.gpx"), "route", 0)

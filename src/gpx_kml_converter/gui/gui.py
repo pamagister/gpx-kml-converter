@@ -39,6 +39,7 @@ from gpx_kml_converter.gui.artifacts import (
     ArtifactIdentity,
     FileCollection,
     FileSummary,
+    artifact_groups,
     artifact_label,
     artifact_metadata,
     plot_reference,
@@ -235,34 +236,23 @@ class MainGui:
 
     def _build_widgets(self):
         """Build the main GUI widgets."""
-        # Main container frame
         main_frame = ttk.Frame(self.root)
         main_frame.pack(fill=tk.BOTH, expand=True, padx=0, pady=0)
 
-        # Create main vertical PanedWindow for upper/lower sections
-        main_vertical_paned = ttk.PanedWindow(main_frame, orient=tk.VERTICAL)
-        main_vertical_paned.pack(fill=tk.BOTH, expand=True)
+        main_horizontal_paned = ttk.PanedWindow(main_frame, orient=tk.HORIZONTAL)
+        main_horizontal_paned.pack(fill=tk.BOTH, expand=True)
 
-        # Upper section
-        main_upper = ttk.Frame(main_vertical_paned)
-        main_vertical_paned.add(main_upper, weight=7)
+        workspace_frame = ttk.LabelFrame(main_horizontal_paned, text="Workspace")
+        center_vertical_paned = ttk.PanedWindow(main_horizontal_paned, orient=tk.VERTICAL)
+        map_frame = ttk.LabelFrame(main_horizontal_paned, text="Map")
+        main_horizontal_paned.add(workspace_frame, weight=2)
+        main_horizontal_paned.add(center_vertical_paned, weight=2)
+        main_horizontal_paned.add(map_frame, weight=5)
 
-        # Lower section
-        main_lower = ttk.Frame(main_vertical_paned)
-        main_vertical_paned.add(main_lower, weight=1)
-
-        upper_horizontal_paned = ttk.PanedWindow(main_upper, orient=tk.HORIZONTAL)
-        upper_horizontal_paned.pack(fill=tk.BOTH, expand=True)
-
-        workspace_frame = ttk.LabelFrame(upper_horizontal_paned, text="Workspace")
-        upper_horizontal_paned.add(workspace_frame, weight=2)
-        metadata_frame = ttk.LabelFrame(upper_horizontal_paned, text="Inspector")
-        upper_horizontal_paned.add(metadata_frame, weight=2)
-        map_frame = ttk.LabelFrame(upper_horizontal_paned, text="Map")
-        upper_horizontal_paned.add(map_frame, weight=5)
-
-        profile_plot_frame = ttk.LabelFrame(main_lower, text="Elevation Profile")
-        profile_plot_frame.pack(fill=tk.BOTH, expand=True)
+        metadata_frame = ttk.LabelFrame(center_vertical_paned, text="Inspector")
+        profile_plot_frame = ttk.LabelFrame(center_vertical_paned, text="Elevation Profile")
+        center_vertical_paned.add(metadata_frame, weight=2)
+        center_vertical_paned.add(profile_plot_frame, weight=1)
 
         self._build_workspace_browser(workspace_frame)
         self._build_metadata_display(metadata_frame)
@@ -403,13 +393,13 @@ class MainGui:
     def _on_log_window_close(self):
         """Callback function when log window is closed."""
         if self.log_window:
-            self.log_window.destroy()
-        self.log_window = None
+            self.log_window.withdraw()
 
     def _build_log_window(self):
         """Build the log window as a separate window."""
-        # Create log window
         if self.log_window is not None:
+            self.log_window.deiconify()
+            self.log_window.lift()
             return
 
         self.log_window = tk.Toplevel(self.root)
@@ -469,6 +459,7 @@ class MainGui:
         )
         log_level_combo.pack(side=tk.LEFT)
         log_level_combo.bind("<<ComboboxSelected>>", self._on_log_level_changed)
+        self.log_window.withdraw()
 
     def _create_menu(self):
         """Create the application menu."""
@@ -636,16 +627,16 @@ class MainGui:
                     file_identity,
                     f"{file_path.name} ({summary.artifact_count})",
                 )
-                self.artifact_tree.item(file_item, open=True)
-                for kind, artifacts in (
-                    ("track", gpx.tracks),
-                    ("route", gpx.routes),
-                    ("waypoint", gpx.waypoints),
-                ):
-                    for index, _artifact in enumerate(artifacts):
-                        identity = ArtifactIdentity(collection, file_path, kind, index)
+                for group_label, identities in artifact_groups(gpx, collection, file_path):
+                    group_item = self.artifact_tree.insert(
+                        file_item,
+                        tk.END,
+                        iid=self._new_tree_item_id(),
+                        text=f"{group_label} ({len(identities)})",
+                    )
+                    for identity in identities:
                         self._insert_artifact(
-                            file_item,
+                            group_item,
                             identity,
                             artifact_label(gpx, identity),
                         )
@@ -692,6 +683,11 @@ class MainGui:
         self._update_batch_status()
         item_id = self.artifact_tree.focus()
         identity = self._tree_identity.get(item_id)
+        if identity is None:
+            parent_item = self.artifact_tree.parent(item_id)
+            parent_identity = self._tree_identity.get(parent_item)
+            if parent_identity is not None and parent_identity.kind == "file":
+                identity = parent_identity
         if identity is None:
             if self._active_identity is not None:
                 self._show_empty_inspector()
