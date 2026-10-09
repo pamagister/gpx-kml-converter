@@ -4,6 +4,69 @@ Changelog
 
 (unreleased)
 ------------
+- Add AGENTS.md and harmonize docs generation. [Paul Magister]
+- Add AGENTS.md. [Paul Magister]
+- Generate user docs. [Paul Magister]
+- #AI-Engineering: Implemented the workspace context actions and
+  processing updates. Right-click menus now offer Remove from Workspace
+  and Open Containing Folder; Delete removes the same eligible
+  selection. File removal never deletes disk files. Removing tracks,
+  routes, or POIs—including all items under a category—creates an in-
+  memory Generated copy and preserves the original. Mixed selection
+  types are blocked, and double-clicking an unsaved copy opens its
+  source with a warning in the log. Renamed Compress Files to Process
+  Files. Processing now uses source-based timestamped filenames, ZIP
+  results go into a folder named after the archive stem, and Merge
+  writes a timestamped GPX at the output directory’s top level. Explicit
+  --output remains an override. Updated the GUI/CLI docs and condensed
+  the UX handoff into UX_GUI_TODO.md, UX_GUI_Prompt.md, and
+  UX_GUI_DONE.md. [Paul Magister]
+- #AI-Engineering: Implemented the three high-priority UX follow-ups:
+  the workspace now spans the left side, the inspector and elevation
+  profile stack in the center, and the map stays on the right. The log
+  starts hidden but remains available from View > Show Log. Files and
+  non-empty Tracks/Routes/POIs folders start collapsed; selecting a
+  folder inspects its file without changing batch selection. [Paul
+  Magister]
+- #AI-Engineering: Implemented the artifact-inspector workspace: a left-
+  side Inputs/Generated tree, cached file summaries in a context-
+  sensitive inspector, and stable file/type/index identities for
+  selection and plots. Batch multiselection and result reuse remain
+  available; the map highlights the active artifact, and the elevation
+  profile follows the selected track. Updated TODO_UX_GUI.md with
+  delivered work and design decisions. [Paul Magister]
+- #AI-Engineering: Die erste Workflow-Stufe ist umgesetzt: Alle GUI-
+  Buttons — einschließlich der Matplotlib-Werkzeuge — verwenden nun Text
+  statt Icons. Neu geladene Dateien sind standardmäßig ausgewählt;
+  Select All Inputs wählt alle Dateien, und bei leerer Auswahl werden
+  alle geladenen Dateien verarbeitet. Ausgewählte Ergebnisse lassen sich
+  wieder zu den Eingaben hinzufügen, ohne sie aus der Ergebnisliste zu
+  entfernen. [Paul Magister]
+- Lilienstein.gpx umbenennen und elevation entfernen (für Tests) [Paul
+  Magister]
+- #AI-Engineering: core/base.py ist jetzt in fokussierte Module
+  aufgeteilt: file_loader.py für GPX/KML/ZIP, geometry.py für
+  Punktoptimierung, elevation.py für Höhenzugriff, gpx_serializer.py für
+  Ausgabe und processor.py für Verarbeitung. Die bisherige core.base-API
+  bleibt als Kompatibilitätsfassade erhalten. CLI und GUI verwenden die
+  neuen Module direkt. SRTM bleibt bei aktivierter Elevation der
+  Standardversuch. Der Zugriff ist injizierbar; wenn keine Höhe
+  verfügbar ist, bleiben Quellhöhe oder 0 erhalten. Automatische
+  Netzwerk- und Firewalldiagnose wurde aus der Verarbeitung entfernt.
+  Ein echter Offline-Modus ist noch eine offene Produktentscheidung, da
+  die SRTM-Bibliothek bei einem Cache-Miss weiterhin Netzwerkzugriffe
+  versuchen kann. [Paul Magister]
+- #AI-Engineering: Die erste größere Verbesserung ist umgesetzt: CLI und
+  GUI nutzen jetzt denselben Verarbeitungsservice für Komprimieren,
+  Zusammenführen und POI-Extraktion. Der CLI-Dispatch-Test verwendet
+  echte GPX-Dateien statt Mocks; zusätzliche Service-Tests prüfen
+  erzeugte GPX-Dateien durch erneutes Einlesen. Die Architekturpunkte
+  und Folgearbeiten stehen in TODO.md. [Paul Magister]
+
+
+1.1.3 (2026-10-07)
+------------------
+- Docs: Update HISTORY.md for release 1.1.3. [Paul Magister]
 - Seit Commit bb514f3 stehen die Doku-Abhängigkeiten in [dependency-
   groups], Read the Docs installierte aber weiterhin das pip-Extra
   .[docs]. Dadurch wurde mkdocs-awesome-nav nicht installiert. Ich habe
