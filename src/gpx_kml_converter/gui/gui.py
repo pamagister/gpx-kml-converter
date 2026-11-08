@@ -210,6 +210,8 @@ class MainGui:
         self._active_identity: ArtifactIdentity | None = None
         self._active_profile_identity: ArtifactIdentity | None = None
         self.batch_status_var = tk.StringVar(master=self.root)
+        # Einmaliger Undo-Snapshot für die letzte Arbeitsplatz-Entfernung.
+        self._undo_snapshot: dict | None = None
 
         # Initialize GeoFileManager
         self.geo_file_manager = GeoFileManager(logger=self.logger)
@@ -363,6 +365,18 @@ class MainGui:
         )
         ToolTip(self.clear_files_button, "Clear all input and generated files")
         self.clear_files_button.pack(pady=4, padx=4, fill=tk.X)
+
+        self.undo_button = ttk.Button(
+            parent_frame,
+            text="Letzte Entfernung rückgängig",
+            command=self._undo_last_removal,
+        )
+        ToolTip(
+            self.undo_button,
+            "Stellt den Zustand vor der letzten Arbeitsplatz-Entfernung wieder her",
+        )
+        self.undo_button.pack(pady=(0, 4), padx=4, fill=tk.X)
+        self._update_undo_button_state()
 
         self.progress = ttk.Progressbar(parent_frame, mode="determinate")
         self.progress.configure(maximum=100, value=0)
@@ -700,6 +714,10 @@ class MainGui:
         ):
             return
 
+        # Ein früherer Undo-Zustand ist nach einem expliziten Leeren nicht mehr gültig.
+        self._undo_snapshot = None
+        self._update_undo_button_state()
+
         self.gpx_input.clear()
         self.gpx_output.clear()
         self._file_summaries.clear()
@@ -953,6 +971,51 @@ class MainGui:
                 command=self._delete_selected_workspace_items,
             )
 
+    def _capture_undo_snapshot(self):
+        """Speichern eines Zustands-Snapshots vor einer Arbeitsplatz-Änderung.
+
+        Die GPX-Objekte werden tief kopiert, da Artefakt-Entfernungen sie
+        direkt im Speicher mutieren. Originaldateien auf Disk werden nie
+        angefasst.
+        """
+        from copy import deepcopy
+
+        self._undo_snapshot = {
+            "gpx_input": deepcopy(self.gpx_input),
+            "gpx_output": deepcopy(self.gpx_output),
+            "_file_summaries": dict(self._file_summaries),
+            "_file_origins": dict(self._file_origins),
+            "_file_labels": dict(self._file_labels),
+            "_virtual_files": set(self._virtual_files),
+        }
+
+    def _update_undo_button_state(self):
+        """Aktiviert den Undo-Button nur, wenn ein Wiederherstellungs-Zustand vorliegt."""
+        try:
+            self.undo_button.config(
+                state=tk.NORMAL if self._undo_snapshot is not None else tk.DISABLED
+            )
+        except (AttributeError, tk.TclError):
+            # Button existiert noch nicht oder Widget wurde zerstört.
+            pass
+
+    def _undo_last_removal(self):
+        """Stellt den Arbeitsplatz-Zustand vor der letzten Entfernung wieder her."""
+        if self._undo_snapshot is None:
+            return
+        snapshot = self._undo_snapshot
+        self.gpx_input = snapshot["gpx_input"]
+        self.gpx_output = snapshot["gpx_output"]
+        self._file_summaries = snapshot["_file_summaries"]
+        self._file_origins = snapshot["_file_origins"]
+        self._file_labels = snapshot["_file_labels"]
+        self._virtual_files = snapshot["_virtual_files"]
+        self._undo_snapshot = None
+        self._rebuild_artifact_tree()
+        self._show_empty_inspector()
+        self._update_undo_button_state()
+        self.logger.info("Letzte Arbeitsplatz-Entfernung rückgängig gemacht")
+
     def _delete_selected_workspace_items(self, _event=None):
         """Remove selected files from the workspace or delete selected artifacts in place.
 
@@ -961,6 +1024,10 @@ class MainGui:
         disk is never modified and no generated working copy is created. Mixed selections
         across files and artifact types are supported.
         """
+        # Zustand vor der Änderung sichern, damit sie einmalig rückgängig gemacht
+        # werden kann. Originaldateien auf Disk bleiben unverändert.
+        self._capture_undo_snapshot()
+
         selected_file_identities: list[ArtifactIdentity] = []
         artifact_targets: dict[tuple[FileCollection, Path, ArtifactKind], set[int] | None] = {}
 

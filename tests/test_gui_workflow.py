@@ -391,6 +391,38 @@ class TestGuiWorkflow(unittest.TestCase):
         self.assertEqual(gui.gpx_input, {})
         self.assertEqual(gui.gpx_output, {})
 
+    def test_undo_last_removal_restores_workspace(self):
+        path_a = Path("a.gpx")
+        path_b = Path("b.gpx")
+        gpx_a, gpx_b = GPX(), GPX()
+        gui = MainGui.__new__(MainGui)
+        gui.artifact_tree = SelectedItems("file_a")
+        gui._tree_identity = {"file_a": ArtifactIdentity("input", path_a, "file")}
+        gui._tree_group_identity = {}
+        gui.gpx_input = {path_a: gpx_a, path_b: gpx_b}
+        gui.gpx_output = {}
+        gui._file_summaries = {}
+        gui._file_origins = {}
+        gui._file_labels = {}
+        gui._virtual_files = set()
+        gui._identity_tree_item = {}
+        gui.logger = logging.getLogger(__name__)
+        gui._rebuild_artifact_tree = lambda: None
+        gui._show_empty_inspector = lambda: None
+
+        result = gui._delete_selected_workspace_items()
+
+        self.assertEqual(result, "break")
+        self.assertNotIn(path_a, gui.gpx_input)
+        self.assertIn(path_b, gui.gpx_input)
+
+        # Undo stellt den Zustand vor der Entfernung wieder her.
+        gui._undo_last_removal()
+
+        self.assertIn(path_a, gui.gpx_input)
+        self.assertIn(path_b, gui.gpx_input)
+        self.assertIsNone(gui._undo_snapshot)
+
     def test_processing_without_selection_asks_confirmation_and_cancel_aborts(self):
         gui = MainGui.__new__(MainGui)
         gui.gpx_input = {Path("a.gpx"): GPX(), Path("b.gpx"): GPX()}

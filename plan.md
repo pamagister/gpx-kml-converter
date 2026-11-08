@@ -98,15 +98,21 @@ Acceptance criteria:
 - Starke Nutzeraktion (Verarbeitung) bei leerer Selektion wird vorab explizit bestätigt.
 - Batch-Status bleibt sichtbar und eindeutig ("Batch: all X input files").
 
-#### 2.3 Drag & Drop für Dateien [ ]
+#### 2.3 Drag & Drop für Dateien [~]
 - Dateien per Drag & Drop in den Workspace ziehen können (GPX, KML, ZIP).
 - Gleiches Verhalten wie beim "Open Files"-Dialog.
+
+Blockiert: tkinter hat kein plattformunabhängiges Drag & Drop in der
+Standardbibliothek. Eine Implementierung erfordert `tkinterdnd2` (neue
+externen Abhängigkeit), was Phase 1–3 laut Plan explizit ausschließt.
+Entscheidung nötig: `tkinterdnd2` zu pyproject.toml hinzufügen oder
+Workpackage 2.3 auf eine spätere Phase verschieben.
 
 Acceptance criteria:
 - Ziehen einer GPX/KML/ZIP-Datei in den Workspace lädt die Datei.
 - Ungültige Dateien werden ignoriert und im Log gewarnt.
 
-#### 2.4 Undo für Workspace-Entfernung (optional, geringer Aufwand) [ ]
+#### 2.4 Undo für Workspace-Entfernung (optional, geringer Aufwand) [x]
 - "Letzte Änderung rückgängig" für Artefakt-Entfernung im Workspace (In-Memory-Kopie vor der Änderung).
 
 Acceptance criteria:
