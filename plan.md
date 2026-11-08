@@ -64,7 +64,7 @@ Acceptance criteria:
 - Klicken auf "View → Show Log" öffnet weiterhin das separate Fenster (funktioniert wie bisher).
 - Bestehende Tests für Logging-Interface laufen weiter.
 
-#### 1.2 Deterministischer Fortschritt und Datei-Label [ ]
+#### 1.2 Deterministischer Fortschritt und Datei-Label [x]
 - Fortschrittsbalken von `indeterminate` auf deterministisch umstellen, soweit die Verarbeitungs-Logik Fortschritt liefert.
 - Aktuelle Datei ("Verarbeite X von Y — datei.gpx") daneben anzeigen.
 - Fortschritt zurücksetzen bei Start neuer Verarbeitung.

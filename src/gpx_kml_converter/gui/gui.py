@@ -362,8 +362,15 @@ class MainGui:
         ToolTip(self.clear_files_button, "Clear all input and generated files")
         self.clear_files_button.pack(pady=4, padx=4, fill=tk.X)
 
-        self.progress = ttk.Progressbar(parent_frame, mode="indeterminate")
+        self.progress = ttk.Progressbar(parent_frame, mode="determinate")
+        self.progress.configure(maximum=100, value=0)
         self.progress.pack(pady=(0, 4), padx=4, fill=tk.X)
+
+        self.current_file_var = tk.StringVar(value="Bereit")
+        self.current_file_label = ttk.Label(
+            parent_frame, textvariable=self.current_file_var, anchor=tk.W
+        )
+        self.current_file_label.pack(fill=tk.X, padx=4, pady=(0, 4))
 
     def _build_metadata_display(self, parent_frame):
         """Build the metadata display with scrollbars."""
@@ -1173,11 +1180,18 @@ class MainGui:
             return
         selected_gpx_objects = [self.gpx_input[path] for path in selected_paths]
 
+        mode_label = dict(self.processing_modes).get(mode, mode)
+        total = len(selected_paths)
+        self.progress.configure(value=0)
+        if total == 1:
+            self.current_file_var.set(f"Verarbeite {selected_paths[0].name}")
+        else:
+            self.current_file_var.set(f"Verarbeite {total} Dateien ({mode_label})")
+
         for button in self.run_buttons.values():
             button.config(state=tk.DISABLED)
         self.clear_files_button.config(state=tk.DISABLED)
-        self.progress.start()
-        self.logger.info(f"Starting '{mode}' processing for {len(selected_gpx_objects)} files...")
+        self.logger.info(f"Starting '{mode}' processing for {total} files...")
 
         def processing_thread():
             try:
@@ -1196,20 +1210,22 @@ class MainGui:
                 )
 
                 # Update GUI after processing
-                self.root.after(0, self._update_gui_after_processing, processed_gpx_map)
+                self.root.after(
+                    0, self._update_gui_after_processing, processed_gpx_map, mode_label, total
+                )
 
             except Exception as err:
                 self.logger.error(f"Error during {mode} processing: {err}")
                 self.logger.debug(f"Full traceback:\n{traceback.format_exc()}")
-                self.root.after(
-                    0, lambda e=err: messagebox.showerror("Error", f"Processing failed: {e}")
-                )
+                self.root.after(0, lambda e=err: self._show_processing_error(e, mode_label, total))
             finally:
                 self.root.after(0, self._reset_ui_state)
 
         threading.Thread(target=processing_thread).start()
 
-    def _update_gui_after_processing(self, processed_gpx_map: dict[Path, GPX]):
+    def _update_gui_after_processing(
+        self, processed_gpx_map: dict[Path, GPX], mode_label: str, total: int
+    ):
         """Publish generated files in the workspace tree."""
         self.gpx_output.update(processed_gpx_map)
         for path in processed_gpx_map:
@@ -1219,6 +1235,11 @@ class MainGui:
             self._file_labels.pop(output_key, None)
             self._virtual_files.discard(output_key)
         self._rebuild_artifact_tree()
+
+        # Deterministic progress: processing finished successfully.
+        self.progress.configure(value=100)
+        self.current_file_var.set(f"{total} Datei(en) verarbeitet ({mode_label})")
+
         if processed_gpx_map:
             last_path = next(reversed(processed_gpx_map))
             item_id = self._identity_tree_item[ArtifactIdentity("output", last_path, "file")]
@@ -1233,6 +1254,17 @@ class MainGui:
         for button in self.run_buttons.values():
             button.config(state=tk.NORMAL)
         self.clear_files_button.config(state=tk.NORMAL)
+
+    def _show_processing_error(self, err: Exception, mode_label: str, total: int):
+        """Show a processing error non-blockingly in the UI instead of a message box.
+
+        The error is already written to the log panel by the processing thread;
+        here we update the status labels so the user sees the failure in the
+        main window without a blocking dialog.
+        """
+        self.progress.configure(value=0)
+        self.current_file_var.set(f"Fehler bei {mode_label} ({total} Datei(en))")
+        self.logger.error(f"Processing failed: {err}")
 
     def _clear_metadata_and_plot(self):
         """Clear the active inspector and its visualizations."""
