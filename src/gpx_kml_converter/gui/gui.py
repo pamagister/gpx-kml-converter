@@ -229,6 +229,7 @@ class MainGui:
         self.gpx_map_plotter = None  # New GPXPlotter instance
         self.gpx_profile_plotter = None  # New GPXPlotter instance
         self.log_window = None
+        self._last_output_dir: Path | None = None
 
         self._build_widgets()
         self._create_menu()
@@ -287,6 +288,9 @@ class MainGui:
 
         # Docked log panel at the bottom of the main window (visible by default).
         self._build_log_panel(main_frame)
+
+        # Completion summary below the log panel.
+        self._build_summary_panel(main_frame)
 
     def _build_workspace_browser(self, parent_frame):
         controls = ttk.Frame(parent_frame)
@@ -489,6 +493,62 @@ class MainGui:
         )
         log_level_combo.pack(side=tk.LEFT)
         log_level_combo.bind("<<ComboboxSelected>>", self._on_log_level_changed)
+
+    def _build_summary_panel(self, parent_frame):
+        """Build the completion summary area below the log panel.
+
+        Shows how many files were processed, in which mode, and where the
+        results lie. The output path is a clickable link that opens the
+        containing folder in the file system.
+        """
+        summary_frame = ttk.Frame(parent_frame)
+        summary_frame.pack(fill=tk.X, padx=4, pady=(2, 4))
+
+        self.summary_var = tk.StringVar(value="")
+        ttk.Label(summary_frame, textvariable=self.summary_var, anchor=tk.W).pack(
+            side=tk.LEFT, fill=tk.X, expand=True
+        )
+
+        self.summary_path_var = tk.StringVar(value="")
+        self.summary_path_label = tk.Label(
+            summary_frame, textvariable=self.summary_path_var, fg="blue", cursor="hand2"
+        )
+        self.summary_path_label.pack(side=tk.RIGHT)
+        self.summary_path_label.bind("<Button-1>", self._on_summary_path_click)
+        self.summary_path_label.bind(
+            "<Enter>", lambda e: self.summary_path_label.config(underline=True)
+        )
+        self.summary_path_label.bind(
+            "<Leave>", lambda e: self.summary_path_label.config(underline=False)
+        )
+
+    def _show_processing_summary(self, count: int, mode_label: str, output_map: dict[Path, GPX]):
+        """Display the completion summary and remember the output directory."""
+        self.summary_var.set(f"Verarbeitung abgeschlossen: {count} Datei(en) ({mode_label})")
+
+        output_dirs = {path.parent for path in output_map}
+        output_dir = next(iter(output_dirs)) if len(output_dirs) == 1 else None
+        self._last_output_dir = output_dir
+        if output_dir is not None and output_dir.is_dir():
+            self.summary_path_var.set(str(output_dir))
+        else:
+            self.summary_path_var.set("")
+
+    def _on_summary_path_click(self, _event=None):
+        """Open the last output directory in the file system."""
+        if self._last_output_dir is None:
+            return
+        try:
+            if sys.platform == "win32":
+                os.startfile(self._last_output_dir)
+            elif sys.platform == "darwin":
+                subprocess.Popen(["open", str(self._last_output_dir)])
+            else:
+                subprocess.Popen(["xdg-open", str(self._last_output_dir)])
+            self.logger.info(f"Opened output folder: {self._last_output_dir}")
+        except Exception as e:
+            self.logger.error(f"Failed to open output folder {self._last_output_dir}: {e}")
+            messagebox.showerror("Error", f"Could not open output folder: {e}")
 
     def _on_log_window_close(self):
         """Callback function when log window is closed."""
@@ -1240,6 +1300,9 @@ class MainGui:
         self.progress.configure(value=100)
         self.current_file_var.set(f"{total} Datei(en) verarbeitet ({mode_label})")
 
+        # Completion summary with clickable output path.
+        self._show_processing_summary(len(processed_gpx_map), mode_label, processed_gpx_map)
+
         if processed_gpx_map:
             last_path = next(reversed(processed_gpx_map))
             item_id = self._identity_tree_item[ArtifactIdentity("output", last_path, "file")]
@@ -1264,6 +1327,8 @@ class MainGui:
         """
         self.progress.configure(value=0)
         self.current_file_var.set(f"Fehler bei {mode_label} ({total} Datei(en))")
+        self.summary_var.set(f"Verarbeitung fehlgeschlagen ({mode_label}): {err}")
+        self.summary_path_var.set("")
         self.logger.error(f"Processing failed: {err}")
 
     def _clear_metadata_and_plot(self):

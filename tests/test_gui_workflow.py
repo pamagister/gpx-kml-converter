@@ -28,6 +28,25 @@ class SelectedItems:
         pass
 
 
+class _FakeVariable:
+    def __init__(self, value=""):
+        self.value = value
+
+    def set(self, value):
+        self.value = value
+
+    def get(self):
+        return self.value
+
+
+class _FakeProgress:
+    def __init__(self):
+        self.value = None
+
+    def configure(self, **kwargs):
+        self.value = kwargs.get("value")
+
+
 class TestGuiWorkflow(unittest.TestCase):
     def test_empty_selection_resolves_to_all_loaded_inputs_in_order(self):
         files = {
@@ -236,3 +255,60 @@ class TestGuiWorkflow(unittest.TestCase):
             self.assertEqual(len(gpx_b.waypoints), 0)
             self.assertEqual(len(gpx_b.routes), 0)
             self.assertEqual(gui.gpx_output, {})
+
+    def test_processing_summary_shows_count_mode_and_output_dir(self):
+        gui = MainGui.__new__(MainGui)
+        gui.summary_var = _FakeVariable()
+        gui.summary_path_var = _FakeVariable()
+        gui._last_output_dir = None
+        gui.logger = logging.getLogger(__name__)
+
+        with TemporaryDirectory() as temp_dir:
+            output_dir = Path(temp_dir) / "out"
+            output_dir.mkdir()
+            output_file = output_dir / "result.gpx"
+            output_file.write_text("gpx", encoding="utf-8")
+            output_map = {output_file: GPX()}
+
+            gui._show_processing_summary(3, "Compress Files", output_map)
+
+            self.assertIn("3 Datei(en)", gui.summary_var.get())
+            self.assertIn("Compress Files", gui.summary_var.get())
+            self.assertEqual(gui._last_output_dir, output_dir)
+            self.assertEqual(gui.summary_path_var.get(), str(output_dir))
+
+    def test_processing_summary_multiple_output_dirs_stores_none(self):
+        gui = MainGui.__new__(MainGui)
+        gui.summary_var = _FakeVariable()
+        gui.summary_path_var = _FakeVariable()
+        gui._last_output_dir = None
+        gui.logger = logging.getLogger(__name__)
+
+        with TemporaryDirectory() as temp_dir:
+            (Path(temp_dir) / "sub").mkdir()
+            output_map = {
+                Path(temp_dir) / "a.gpx": GPX(),
+                Path(temp_dir) / "sub" / "b.gpx": GPX(),
+            }
+            gui._show_processing_summary(2, "Merge Files", output_map)
+
+            self.assertIsNone(gui._last_output_dir)
+            self.assertEqual(gui.summary_path_var.get(), "")
+
+    def test_processing_error_shown_non_blockingly(self):
+        gui = MainGui.__new__(MainGui)
+        gui.summary_var = _FakeVariable()
+        gui.summary_path_var = _FakeVariable()
+        gui.current_file_var = _FakeVariable()
+        gui.progress = _FakeProgress()
+        gui.logger = logging.getLogger(__name__)
+
+        gui._show_processing_error(ValueError("boom"), "Compress Files", 2)
+
+        self.assertEqual(gui.progress.value, 0)
+        self.assertIn("Fehler", gui.current_file_var.get())
+        self.assertIn("Verarbeitung fehlgeschlagen", gui.summary_var.get())
+
+
+if __name__ == "__main__":
+    unittest.main()

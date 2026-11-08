@@ -73,7 +73,7 @@ Acceptance criteria:
 - Während einer Verarbeitung zeigt der Balken einen deterministischen Wert (nicht nur Animation).
 - Ein Label zeigt die aktuell verarbeitete Datei und den Zähler (X von Y).
 
-#### 1.3 Abschluss-Zusammenfassung [ ]
+#### 1.3 Abschluss-Zusammenfassung [x]
 - Nach erfolgreichem Abschluss: Hinweis im Hauptfenster (Status-Label oder nicht-blockierender Info-Bereich) mit Anzahl verarbeiteter Dateien, Modus und Ausgabepfad als klickbarer Link.
 - Bei Fehler: nicht-blockierende Anzeige im Log-Panel statt nur `messagebox`.
 
