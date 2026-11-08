@@ -1,6 +1,7 @@
 # Repository Instructions
 
 These rules apply to this Python project. Keep changes focused and follow the existing architecture.
+General rule: Documentation, artifact-creation, comments, replies, GUI-Elements: allways in english. Everything in english. Even if the prompt was originally in another language.
 
 ## Python conventions
 
