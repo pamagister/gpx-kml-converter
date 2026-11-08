@@ -51,59 +51,75 @@ from gpx_kml_converter.gui.artifacts import (
 
 
 class GuiLogWriter:
-    """Log writer that handles GUI text widget updates in a thread-safe way."""
+    """Log writer that handles GUI text widget updates in a thread-safe way.
 
-    def __init__(self, text_widget):
-        self.text_widget = text_widget
-        self.root = text_widget.winfo_toplevel()
-        self.hyperlink_tags = {}  # To store clickable links
+    Writes log output to one or more tkinter text widgets (e.g. the docked
+    log panel in the main window and an optional separate log window).
+    """
+
+    def __init__(self, *text_widgets):
+        self.text_widgets = list(text_widgets)
+        self.root = text_widgets[0].winfo_toplevel() if text_widgets else None
+        self.hyperlink_tags = {}  # tag_name -> path (clickable links)
+
+    def add_widget(self, text_widget):
+        """Register an additional text widget to receive log output."""
+        if text_widget not in self.text_widgets:
+            self.text_widgets.append(text_widget)
 
     def write(self, text):
-        """Write text to the widget in a thread-safe manner."""
+        """Write text to all registered widgets in a thread-safe manner."""
         # Schedule the GUI update in the main thread
+        if self.root is None:
+            return
         self.root.after(0, self._update_text, text)
 
     def _update_text(self, text):
-        """Update the text widget (must be called from main thread)."""
-        try:
-            current_end = self.text_widget.index(tk.END)
-            self.text_widget.insert(tk.END, text)
+        """Update all registered text widgets (must be called from main thread)."""
+        for text_widget in self.text_widgets:
+            try:
+                self._update_one(text_widget, text)
+            except tk.TclError:
+                # Widget might be destroyed
+                pass
 
-            # Check for a directory path (simplified regex for common path formats)
-            # This regex looks for paths that start with a drive letter (C:\), a forward slash (/)
-            # or a backslash (\) followed by word characters, and ends with a word character.
-            # This is a basic approach; more robust path detection might be needed for edge cases.
-            import re
+    def _update_one(self, text_widget, text):
+        """Update a single text widget."""
+        current_end = text_widget.index(tk.END)
+        text_widget.insert(tk.END, text)
 
-            path_match = re.search(
-                r"([A-Za-z]:[\\/][\S ]*|[\\][\\/][\S ]*|[\w/.-]+[/][\S ]*)\b", text
-            )
-            if path_match:
-                path = path_match.group(0).strip()
-                # Ensure the path exists and is a directory to make it clickable
-                if Path(path).is_dir():
-                    start_index = self.text_widget.search(path, current_end, tk.END)
-                    if start_index:
-                        end_index = f"{start_index}+{len(path)}c"
-                        tag_name = f"link_{len(self.hyperlink_tags)}"
-                        self.text_widget.tag_config(tag_name, foreground="blue", underline=True)
-                        self.text_widget.tag_bind(
-                            tag_name, "<Button-1>", lambda e, p=path: self._open_path_in_explorer(p)
-                        )
-                        self.text_widget.tag_bind(
-                            tag_name, "<Enter>", lambda e: self.text_widget.config(cursor="hand2")
-                        )
-                        self.text_widget.tag_bind(
-                            tag_name, "<Leave>", lambda e: self.text_widget.config(cursor="")
-                        )
-                        self.text_widget.tag_add(tag_name, start_index, end_index)
-                        self.hyperlink_tags[tag_name] = path
+        # Check for a directory path (simplified regex for common path formats)
+        # This regex looks for paths that start with a drive letter (C:\), a forward slash (/)
+        # or a backslash (\) followed by word characters, and ends with a word character.
+        # This is a basic approach; more robust path detection might be needed for edge cases.
+        import re
 
-            self.text_widget.see(tk.END)
-            self.text_widget.update_idletasks()
-        except tk.TclError:
-            # Widget might be destroyed
-            pass
+        path_match = re.search(
+            r"([A-Za-z]:[\\/][\S ]*|[\\][\\/][\S ]*|[\w/.-]+[/][\S ]*)\b", text
+        )
+        if path_match:
+            path = path_match.group(0).strip()
+            # Ensure the path exists and is a directory to make it clickable
+            if Path(path).is_dir():
+                start_index = text_widget.search(path, current_end, tk.END)
+                if start_index:
+                    end_index = f"{start_index}+{len(path)}c"
+                    tag_name = f"link_{len(self.hyperlink_tags)}"
+                    text_widget.tag_config(tag_name, foreground="blue", underline=True)
+                    text_widget.tag_bind(
+                        tag_name, "<Button-1>", lambda e, p=path: self._open_path_in_explorer(p)
+                    )
+                    text_widget.tag_bind(
+                        tag_name, "<Enter>", lambda e: text_widget.config(cursor="hand2")
+                    )
+                    text_widget.tag_bind(
+                        tag_name, "<Leave>", lambda e: text_widget.config(cursor="")
+                    )
+                    text_widget.tag_add(tag_name, start_index, end_index)
+                    self.hyperlink_tags[tag_name] = path
+
+        text_widget.see(tk.END)
+        text_widget.update_idletasks()
 
     def _open_path_in_explorer(self, path):
         """Opens the given path in the file explorer."""
@@ -173,6 +189,9 @@ class MainGui:
 
         # Initialize configuration
         self.config_manager = ConfigParameterManager("config.yaml")
+
+        # Log level selector shared by the docked panel and the separate window
+        self.log_level_var = tk.StringVar(value=self.config_manager.app.log_level.value)
 
         # Initialize logging system
         self.logger_manager = initialize_logging(self.config_manager)
@@ -265,6 +284,9 @@ class MainGui:
         self._build_metadata_display(metadata_frame)
         self._build_plot_display(map_frame)
         self._build_profile_plot(profile_plot_frame)
+
+        # Docked log panel at the bottom of the main window (visible by default).
+        self._build_log_panel(main_frame)
 
     def _build_workspace_browser(self, parent_frame):
         controls = ttk.Frame(parent_frame)
@@ -405,13 +427,73 @@ class MainGui:
 
         self.canvas_widget1.config(cursor="hand2")  # Change cursor when hovering over plot
 
+    def _build_log_panel(self, parent_frame):
+        """Build the docked log panel at the bottom of the main window.
+
+        The panel is visible by default so users always see status, progress
+        and errors without opening a separate window.
+        """
+        log_frame = ttk.LabelFrame(parent_frame, text="Log Output")
+        log_frame.pack(fill=tk.X, padx=4, pady=(4, 0))
+        log_frame.pack_propagate(False)
+        log_frame.configure(height=140)
+
+        log_frame.grid_rowconfigure(0, weight=1)  # Text widget
+        log_frame.grid_columnconfigure(0, weight=1)  # Text widget
+        log_frame.grid_rowconfigure(1, weight=0)  # Controls
+
+        log_text_frame = ttk.Frame(log_frame)
+        log_text_frame.grid(row=0, column=0, sticky="nsew", padx=0, pady=0)
+        log_text_frame.grid_rowconfigure(0, weight=1)
+        log_text_frame.grid_columnconfigure(0, weight=1)
+
+        self.log_text = tk.Text(log_text_frame, height=8)
+
+        log_v_scrollbar = ttk.Scrollbar(
+            log_text_frame, orient="vertical", command=self.log_text.yview
+        )
+        self.log_text.configure(yscrollcommand=log_v_scrollbar.set)
+
+        log_h_scrollbar = ttk.Scrollbar(
+            log_text_frame, orient="horizontal", command=self.log_text.xview
+        )
+        self.log_text.configure(xscrollcommand=log_h_scrollbar.set)
+
+        self.log_text.grid(row=0, column=0, sticky="nsew")
+        log_v_scrollbar.grid(row=0, column=1, sticky="ns")
+        log_h_scrollbar.grid(row=1, column=0, sticky="ew")
+
+        log_text_frame.grid_rowconfigure(0, weight=1)
+        log_text_frame.grid_columnconfigure(0, weight=1)
+
+        # Log controls
+        log_controls = ttk.Frame(log_frame)
+        log_controls.grid(row=1, column=0, sticky="ew", padx=0, pady=0)
+
+        ttk.Button(log_controls, text="Clear Log", command=self._clear_log).pack(side=tk.LEFT)
+
+        ttk.Label(log_controls, text="Log Level:").pack(side=tk.LEFT, padx=(12, 0), pady=0)
+        log_level_combo = ttk.Combobox(
+            log_controls,
+            textvariable=self.log_level_var,
+            values=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+            state="readonly",
+            width=10,
+        )
+        log_level_combo.pack(side=tk.LEFT)
+        log_level_combo.bind("<<ComboboxSelected>>", self._on_log_level_changed)
+
     def _on_log_window_close(self):
         """Callback function when log window is closed."""
         if self.log_window:
             self.log_window.withdraw()
 
     def _build_log_window(self):
-        """Build the log window as a separate window."""
+        """Build (or reveal) the separate log window as a Toplevel.
+
+        The separate window remains available via "View → Show Log" and
+        mirrors the log output of the docked panel.
+        """
         if self.log_window is not None:
             self.log_window.deiconify()
             self.log_window.lift()
@@ -434,23 +516,25 @@ class MainGui:
         # Frame für Log Text widget mit beiden Scrollbars
         log_text_frame = ttk.Frame(log_frame)
         log_text_frame.grid(row=0, column=0, sticky="nsew", padx=0, pady=0)
+        log_text_frame.grid_rowconfigure(0, weight=1)
+        log_text_frame.grid_columnconfigure(0, weight=1)
 
-        self.log_text = tk.Text(log_text_frame, height=15)  # Höher, kein Wrap
+        self.log_window_text = tk.Text(log_text_frame, height=15)  # Höher, kein Wrap
 
         # Vertikale Scrollbar
         log_v_scrollbar = ttk.Scrollbar(
-            log_text_frame, orient="vertical", command=self.log_text.yview
+            log_text_frame, orient="vertical", command=self.log_window_text.yview
         )
-        self.log_text.configure(yscrollcommand=log_v_scrollbar.set)
+        self.log_window_text.configure(yscrollcommand=log_v_scrollbar.set)
 
         # Horizontale Scrollbar
         log_h_scrollbar = ttk.Scrollbar(
-            log_text_frame, orient="horizontal", command=self.log_text.xview
+            log_text_frame, orient="horizontal", command=self.log_window_text.xview
         )
-        self.log_text.configure(xscrollcommand=log_h_scrollbar.set)
+        self.log_window_text.configure(xscrollcommand=log_h_scrollbar.set)
 
         # Grid layout für Log Text widget und Scrollbars
-        self.log_text.grid(row=0, column=0, sticky="nsew")
+        self.log_window_text.grid(row=0, column=0, sticky="nsew")
         log_v_scrollbar.grid(row=0, column=1, sticky="ns")
         log_h_scrollbar.grid(row=1, column=0, sticky="ew")
 
@@ -463,8 +547,7 @@ class MainGui:
 
         ttk.Button(log_controls, text="Clear Log", command=self._clear_log).pack(side=tk.LEFT)
 
-        ttk.Label(log_controls, text="Log Level:").pack(side=tk.LEFT, padx=0, pady=0)
-        self.log_level_var = tk.StringVar(value=self.config_manager.app.log_level.value)
+        ttk.Label(log_controls, text="Log Level:").pack(side=tk.LEFT, padx=(12, 0), pady=0)
         log_level_combo = ttk.Combobox(
             log_controls,
             textvariable=self.log_level_var,
@@ -474,6 +557,7 @@ class MainGui:
         )
         log_level_combo.pack(side=tk.LEFT)
         log_level_combo.bind("<<ComboboxSelected>>", self._on_log_level_changed)
+
         self.log_window.withdraw()
 
     def _create_menu(self):
@@ -510,9 +594,13 @@ class MainGui:
         help_menu.add_command(label="About", command=self._show_about)
 
     def _setup_gui_logging(self):
-        """Setup GUI logging integration."""
-        # Create GUI log writer
-        self.gui_log_writer = GuiLogWriter(self.log_text)
+        """Setup GUI logging integration.
+
+        The docked panel and the separate log window both receive live log
+        output through the shared GUI log writer.
+        """
+        # Create GUI log writer for the docked panel and the separate window
+        self.gui_log_writer = GuiLogWriter(self.log_text, self.log_window_text)
         # Connect to logging system
         connect_gui_logging(self.gui_log_writer)
 
@@ -523,8 +611,14 @@ class MainGui:
         self.logger.info(f"Log level changed to {new_level}")
 
     def _clear_log(self):
-        """Clear the log text widget."""
-        self.log_text.delete(1.0, tk.END)
+        """Clear the log text widgets."""
+        for text_widget in (getattr(self, "log_text", None), getattr(self, "log_window_text", None)):
+            if text_widget is not None:
+                try:
+                    text_widget.delete(1.0, tk.END)
+                except tk.TclError:
+                    # Widget might be destroyed
+                    pass
         self.logger.debug("Log display cleared")
 
     def _clear_files(self):

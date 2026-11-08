@@ -52,9 +52,9 @@ Erwartetes Ergebnis:
 
 ## 4. Phases containing coherent work packages
 
-### Phase 1: Process-Feedback und Logging [ ]
+### Phase 1: Process-Feedback und Logging [-]
 
-#### 1.1 Log-Panel ins Hauptfenster integrieren [ ]
+#### 1.1 Log-Panel ins Hauptfenster integrieren [x]
 - Log-Text-Widget fest im Hauptfenster platzieren (unten, docked), statt nur im separaten Toplevel.
 - Separates Toplevel-Fenster kann über Menü weiterhin geöffnet werden, aber das Hauptfenster-Panel ist standardmäßig sichtbar.
 - Log-Level-Selektor und Clear-Button ebenfalls im Hauptfenster verfügbar.
