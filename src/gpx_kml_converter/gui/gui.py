@@ -38,13 +38,13 @@ from gpx_kml_converter.core.logging import (
 from gpx_kml_converter.gui.artifacts import (
     ArtifactGroupIdentity,
     ArtifactIdentity,
+    ArtifactKind,
     FileCollection,
     FileSummary,
     artifact_groups,
     artifact_label,
     artifact_metadata,
     plot_reference,
-    remove_artifacts,
     selected_input_paths,
     summarize_gpx,
 )
@@ -700,7 +700,9 @@ class MainGui:
     def _show_browser_context_menu(self, event):
         item_id = self.artifact_tree.identify_row(event.y)
         if item_id:
-            self._show_browser_context_menu_at(item_id, event.x_root, event.y_root)
+            self.artifact_tree.after_idle(
+                lambda: self._show_browser_context_menu_at(item_id, event.x_root, event.y_root)
+            )
         return "break"
 
     def _show_keyboard_context_menu(self, _event=None):
@@ -729,111 +731,147 @@ class MainGui:
             )
             menu.add_separator()
 
-        kind = self._selected_removal_kind()
-        if kind == "file":
-            menu.add_command(
-                label="Remove from Workspace",
-                command=self._delete_selected_workspace_items,
-            )
-        elif kind in {"track", "route", "waypoint"}:
-            label = {"track": "Tracks", "route": "Routes", "waypoint": "POIs"}[kind]
-            menu.add_command(
-                label=f"Remove selected {label}",
-                command=self._delete_selected_workspace_items,
-            )
-        else:
-            menu.add_command(
-                label="Remove unavailable for mixed selections",
-                state=tk.DISABLED,
-            )
+        self._add_remove_menu_commands(menu)
 
         try:
             menu.tk_popup(x, y)
         finally:
             menu.grab_release()
 
+    def _add_remove_menu_commands(self, menu: tk.Menu) -> None:
+        """Add remove commands for the current selection, allowing mixed artifact types."""
+        has_files = False
+        has_artifacts = False
+        for item_id in self.artifact_tree.selection():
+            identity = self._tree_identity.get(item_id)
+            group_identity = self._tree_group_identity.get(item_id)
+            if group_identity is not None:
+                has_artifacts = True
+            elif identity is not None:
+                if identity.kind == "file":
+                    has_files = True
+                else:
+                    has_artifacts = True
+
+        if not has_files and not has_artifacts:
+            return
+
+        if has_files and not has_artifacts:
+            menu.add_command(
+                label="Remove from Workspace",
+                command=self._delete_selected_workspace_items,
+            )
+        elif has_artifacts and not has_files:
+            kind = self._selected_removal_kind()
+            if kind in {"track", "route", "waypoint"}:
+                label = {"track": "Tracks", "route": "Routes", "waypoint": "POIs"}[kind]
+                menu.add_command(
+                    label=f"Remove selected {label}",
+                    command=self._delete_selected_workspace_items,
+                )
+            else:
+                menu.add_command(
+                    label="Remove selected artifacts",
+                    command=self._delete_selected_workspace_items,
+                )
+        else:
+            # Mixed files and artifacts: one command handles both.
+            menu.add_command(
+                label="Remove from Workspace",
+                command=self._delete_selected_workspace_items,
+            )
+
     def _delete_selected_workspace_items(self, _event=None):
-        kind = self._selected_removal_kind()
-        if kind is None:
+        """Remove selected files from the workspace or delete selected artifacts in place.
+
+        Files are removed from the input/output maps. Artifacts (tracks, routes, POIs)
+        are deleted directly from the GPX object held in memory; the original file on
+        disk is never modified and no generated working copy is created. Mixed selections
+        across files and artifact types are supported.
+        """
+        selected_file_identities: list[ArtifactIdentity] = []
+        artifact_targets: dict[tuple[FileCollection, Path, ArtifactKind], set[int] | None] = {}
+
+        for item_id in self.artifact_tree.selection():
+            identity = self._tree_identity.get(item_id)
+            group_identity = self._tree_group_identity.get(item_id)
+            if group_identity is not None:
+                key = (
+                    group_identity.collection,
+                    group_identity.file_path,
+                    group_identity.kind,
+                )
+                artifact_targets[key] = None
+            elif identity is not None:
+                if identity.kind == "file":
+                    selected_file_identities.append(identity)
+                elif identity.index is not None:
+                    key = (
+                        identity.collection,
+                        identity.file_path,
+                        identity.kind,
+                    )
+                    if key not in artifact_targets:
+                        artifact_targets[key] = set()
+                    artifact_targets[key].add(identity.index)
+
+        if not selected_file_identities and not artifact_targets:
             messagebox.showwarning(
                 "Cannot Remove Selection",
-                "Select files or artifacts of one type before removing them.",
+                "Select files or artifacts before removing them.",
             )
             return "break"
 
-        if kind == "file":
-            selected_files = [
-                self._tree_identity[item_id]
-                for item_id in self.artifact_tree.selection()
-                if item_id in self._tree_identity
-            ]
-            selected_paths = {identity.file_path for identity in selected_files}
+        removed_file_count = 0
+        if selected_file_identities:
+            selected_paths = {identity.file_path for identity in selected_file_identities}
             for file_path in selected_paths:
                 for collection, file_map in (
                     ("input", self.gpx_input),
                     ("output", self.gpx_output),
                 ):
-                    file_map.pop(file_path, None)
+                    if file_map.pop(file_path, None) is not None:
+                        removed_file_count += 1
                     cache_key = (collection, file_path)
                     self._file_summaries.pop(cache_key, None)
                     self._file_origins.pop(cache_key, None)
                     self._file_labels.pop(cache_key, None)
                     self._virtual_files.discard(cache_key)
-            self.logger.info(f"Removed {len(selected_paths)} file(s) from the workspace.")
-            self._rebuild_artifact_tree()
-            self._show_empty_inspector()
-            return "break"
+            self.logger.info(f"Removed {removed_file_count} file(s) from the workspace.")
 
-        targets: dict[tuple[FileCollection, Path], set[int] | None] = {}
-        for item_id in self.artifact_tree.selection():
-            identity = self._tree_identity.get(item_id)
-            group_identity = self._tree_group_identity.get(item_id)
-            if group_identity is not None:
-                targets[(group_identity.collection, group_identity.file_path)] = None
-            elif identity is not None and identity.index is not None:
-                target_key = (identity.collection, identity.file_path)
-                if targets.get(target_key, set()) is not None:
-                    targets.setdefault(target_key, set()).add(identity.index)
+        artifact_removal_count = 0
+        if artifact_targets:
+            for (collection, file_path, kind), indexes in artifact_targets.items():
+                file_map = self.gpx_input if collection == "input" else self.gpx_output
+                source_gpx = file_map.get(file_path)
+                if source_gpx is None:
+                    self.logger.error(f"GPX object not found for path: {file_path}")
+                    messagebox.showerror("Error", "The selected GPX data is no longer available.")
+                    return "break"
 
-        new_paths = []
-        for (collection, file_path), indexes in targets.items():
-            file_map = self.gpx_input if collection == "input" else self.gpx_output
-            source_gpx = file_map.get(file_path)
-            if source_gpx is None:
-                self.logger.error(f"GPX object not found for path: {file_path}")
-                messagebox.showerror("Error", "The selected GPX data is no longer available.")
-                return "break"
+                artifacts = {
+                    "track": source_gpx.tracks,
+                    "route": source_gpx.routes,
+                    "waypoint": source_gpx.waypoints,
+                }[kind]
+                selected_indexes = set(range(len(artifacts))) if indexes is None else indexes
+                if any(index < 0 or index >= len(artifacts) for index in selected_indexes):
+                    messagebox.showerror("Error", f"{kind.title()} index is out of range.")
+                    return "break"
 
-            derived_gpx = remove_artifacts(source_gpx, kind, indexes)
-            origin = self._file_origins.get((collection, file_path), FileOrigin(file_path))
-            self._working_copy_counter += 1
-            working_copy_path = (
-                origin.source_path.parent
-                / f".{origin.source_path.name}.workspace"
-                / f"working-copy-{self._working_copy_counter}-{origin.output_stem}.gpx"
+                for index in sorted(selected_indexes, reverse=True):
+                    del artifacts[index]
+                    artifact_removal_count += 1
+
+                # Invalidate cached summary so the rebuilt tree shows updated counts.
+                self._file_summaries.pop((collection, file_path), None)
+
+            self.logger.info(
+                f"Removed {artifact_removal_count} artifact(s) in place from selected GPX data."
             )
-            output_key = ("output", working_copy_path)
-            self.gpx_output[working_copy_path] = derived_gpx
-            self._file_origins[output_key] = origin
-            self._file_labels[output_key] = (
-                f"{origin.output_stem} (Working Copy {self._working_copy_counter}).gpx"
-            )
-            self._virtual_files.add(output_key)
-            self._file_summaries.pop(output_key, None)
-            new_paths.append(working_copy_path)
 
         self._rebuild_artifact_tree()
-        result_items = [
-            self._identity_tree_item[ArtifactIdentity("output", path, "file")] for path in new_paths
-        ]
-        if result_items:
-            self.artifact_tree.selection_set(*result_items)
-            self.artifact_tree.focus(result_items[-1])
-            self.artifact_tree.see(result_items[-1])
-            self._on_browser_selection()
-        self.logger.info(
-            f"Created {len(new_paths)} derived working copy/copies with selected {kind}s removed."
-        )
+        self._show_empty_inspector()
         return "break"
 
     def _selected_input_paths(self) -> list[Path]:

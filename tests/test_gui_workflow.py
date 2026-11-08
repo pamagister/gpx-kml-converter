@@ -3,7 +3,7 @@ import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from gpxpy.gpx import GPX, GPXWaypoint
+from gpxpy.gpx import GPX, GPXRoute, GPXTrack, GPXWaypoint
 
 from gpx_kml_converter.core.file_loader import FileOrigin
 from gpx_kml_converter.gui.artifacts import ArtifactGroupIdentity, ArtifactIdentity
@@ -110,7 +110,7 @@ class TestGuiWorkflow(unittest.TestCase):
             self.assertNotIn(source_path, gui.gpx_output)
             self.assertEqual(source_path.read_bytes(), original_contents)
 
-    def test_category_removal_creates_generated_copy_without_mutating_source(self):
+    def test_category_removal_mutates_source_in_place_without_generated_copy(self):
         with TemporaryDirectory() as temp_dir:
             source_path = Path(temp_dir) / "source.gpx"
             source_gpx = GPX()
@@ -133,20 +133,65 @@ class TestGuiWorkflow(unittest.TestCase):
             gui._identity_tree_item = {}
             gui.logger = logging.getLogger(__name__)
             gui._on_browser_selection = lambda: None
+            gui._show_empty_inspector = lambda: None
 
             def rebuild_tree():
-                result_path = next(iter(gui.gpx_output))
-                gui._identity_tree_item = {
-                    ArtifactIdentity("output", result_path, "file"): "result"
-                }
+                pass
 
             gui._rebuild_artifact_tree = rebuild_tree
 
             result = gui._delete_selected_workspace_items()
 
-            derived_gpx = next(iter(gui.gpx_output.values()))
             self.assertEqual(result, "break")
-            self.assertEqual(len(source_gpx.waypoints), 1)
-            self.assertEqual(derived_gpx.waypoints, [])
+            self.assertEqual(len(source_gpx.waypoints), 0)
+            self.assertEqual(gui.gpx_output, {})
             self.assertEqual(source_path.read_bytes(), original_contents)
-            self.assertEqual(gui.artifact_tree.selection(), ("result",))
+
+    def test_removal_across_mixed_artifacts_and_multiple_files(self):
+        with TemporaryDirectory() as temp_dir:
+            path_a = Path(temp_dir) / "a.gpx"
+            path_b = Path(temp_dir) / "b.gpx"
+            gpx_a = GPX()
+            gpx_a.waypoints.append(GPXWaypoint(latitude=50.0, longitude=10.0, name="WP A"))
+            gpx_a.tracks.append(GPXTrack(name="Track A"))
+            gpx_b = GPX()
+            gpx_b.waypoints.append(GPXWaypoint(latitude=51.0, longitude=11.0, name="WP B"))
+            gpx_b.routes.append(GPXRoute(name="Route B"))
+            path_a.write_text(gpx_a.to_xml(), encoding="utf-8")
+            path_b.write_text(gpx_b.to_xml(), encoding="utf-8")
+            gui = MainGui.__new__(MainGui)
+            gui.artifact_tree = SelectedItems("wp_a", "track_a", "wp_b", "route_b")
+            gui._tree_identity = {
+                "wp_a": ArtifactIdentity("input", path_a, "waypoint", 0),
+                "track_a": ArtifactIdentity("input", path_a, "track", 0),
+                "wp_b": ArtifactIdentity("input", path_b, "waypoint", 0),
+                "route_b": ArtifactIdentity("input", path_b, "route", 0),
+            }
+            gui._tree_group_identity = {}
+            gui.gpx_input = {path_a: gpx_a, path_b: gpx_b}
+            gui.gpx_output = {}
+            gui._file_summaries = {}
+            gui._file_origins = {
+                ("input", path_a): FileOrigin(path_a),
+                ("input", path_b): FileOrigin(path_b),
+            }
+            gui._file_labels = {}
+            gui._virtual_files = set()
+            gui._identity_tree_item = {}
+            gui.logger = logging.getLogger(__name__)
+            gui._on_browser_selection = lambda: None
+            gui._show_empty_inspector = lambda: None
+
+            def rebuild_tree():
+                pass
+
+            gui._rebuild_artifact_tree = rebuild_tree
+
+            result = gui._delete_selected_workspace_items()
+
+            self.assertEqual(result, "break")
+            self.assertEqual(len(gpx_a.waypoints), 0)
+            self.assertEqual(len(gpx_a.tracks), 0)
+            self.assertEqual(len(gpx_b.waypoints), 0)
+            self.assertEqual(len(gpx_b.routes), 0)
+            self.assertEqual(gui.gpx_output, {})
