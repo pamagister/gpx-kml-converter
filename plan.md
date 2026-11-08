@@ -228,3 +228,21 @@ Keine offenen Fragen mehr; alle Punkte wurden mit dem Nutzer abgestimmt:
 
 ### Deferred work
 - Barrierefreiheits-Audit (Kontraste, Fokus-Ringe, Screenreader-Label) ist nicht als eigene Phase enthalten, sollte aber bei Gelegenheit nachgeholt werden.
+
+## Progress / Handoff (2026-11-09)
+
+Phase 1 (Process-Feedback und Logging) abgeschlossen, committet und CI grün:
+- 1.1 Docked Log-Panel im Hauptfenster (getrenntes Toplevel über "View → Show Log" bleibt).
+- 1.2 Deterministische Fortschrittsanzeige + aktuelle Datei ("Verarbeite X von Y"); nicht-blockierende Fehleranzeige.
+- 1.3 Abschluss-Zusammenfassung mit klickbarem Ausgabepfad.
+Commits: bc06652, 88966cb, 3d2ab6a. Issue: #11. Tests: 61 insgesamt grün (incl. neuer GUI-Tests).
+
+Phase 2 (Selektionssicherheit und Workflow) teilweise abgeschlossen:
+- [x] 2.1 Bestätigung bei "Clear Workspace" (Commit b1ab79d)
+- [x] 2.2 Warnung bei Verarbeitung ohne Selektion ("Alle X Dateien verarbeiten?") (Commit 6b3140e)
+- [~] 2.3 Drag & Drop: BLOCKIERT — tkinter hat kein plattformunabhängiges DnD in der Stdlib; `tkinterdnd2` wäre neue externe Abhängigkeit, was Phase 1–3 ausschließt. Entscheidung nötig: Dependency hinzufügen oder Workpackage verschieben.
+- [x] 2.4 Einmaliger Undo für Workspace-Entfernung (Commit 20ad7f1)
+
+Offen für Phase 2: 2.3 (Drag & Drop). Phase 3–5 noch nicht angefangen.
+
+Alle 61 Tests (`uv run pytest`) und Ruff Lint/Format laufen grün. CI (GitHub Actions: ubuntu, macOS, Windows + Linter) ist grün für den letzten Push (20ad7f1).
