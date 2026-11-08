@@ -689,7 +689,15 @@ class MainGui:
         self.logger.debug("Log display cleared")
 
     def _clear_files(self):
-        """Clear all files from the workspace."""
+        """Clear all files from the workspace after explicit user confirmation."""
+        if not messagebox.askyesno(
+            "Workspace leeren",
+            "Sollen wirklich alle Dateien aus dem Workspace entfernt werden?\n\n"
+            "Die Originaldateien auf der Festplatte bleiben unverändert.",
+            icon=messagebox.QUESTION,
+        ):
+            return
+
         self.gpx_input.clear()
         self.gpx_output.clear()
         self._file_summaries.clear()

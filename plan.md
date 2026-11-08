@@ -52,7 +52,7 @@ Erwartetes Ergebnis:
 
 ## 4. Phases containing coherent work packages
 
-### Phase 1: Process-Feedback und Logging [-]
+### Phase 1: Process-Feedback und Logging [x]
 
 #### 1.1 Log-Panel ins Hauptfenster integrieren [x]
 - Log-Text-Widget fest im Hauptfenster platzieren (unten, docked), statt nur im separaten Toplevel.
@@ -83,7 +83,7 @@ Acceptance criteria:
 
 ### Phase 2: Selektionssicherheit und Workflow [ ]
 
-#### 2.1 Bestätigung bei "Clear Workspace" [ ]
+#### 2.1 Bestätigung bei "Clear Workspace" [x]
 - Vor dem Leeren des gesamten Workspaces einen Bestätigungsdialog anzeigen.
 
 Acceptance criteria:

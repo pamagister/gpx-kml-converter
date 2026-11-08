@@ -3,6 +3,8 @@ import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
+from tkinter import messagebox
+
 from gpxpy.gpx import GPX, GPXRoute, GPXTrack, GPXWaypoint
 
 from gpx_kml_converter.core.file_loader import FileOrigin
@@ -308,6 +310,61 @@ class TestGuiWorkflow(unittest.TestCase):
         self.assertEqual(gui.progress.value, 0)
         self.assertIn("Fehler", gui.current_file_var.get())
         self.assertIn("Verarbeitung fehlgeschlagen", gui.summary_var.get())
+
+    def test_clear_workspace_requires_confirmation(self):
+        gui = MainGui.__new__(MainGui)
+        gui.gpx_input = {Path("a.gpx"): GPX()}
+        gui.gpx_output = {Path("b.gpx"): GPX()}
+        gui._file_summaries = {}
+        gui._file_origins = {}
+        gui._file_labels = {}
+        gui._virtual_files = set()
+        gui.logger = logging.getLogger(__name__)
+        gui._rebuild_artifact_tree = lambda: None
+        gui._show_empty_inspector = lambda: None
+
+        cleared = []
+
+        def askyesno(title, message, **kwargs):
+            cleared.append(True)
+            return False
+
+        messagebox_askyesno = messagebox.askyesno
+        try:
+            messagebox.askyesno = askyesno
+            gui._clear_files()
+        finally:
+            messagebox.askyesno = messagebox_askyesno
+
+        # Abbruch lässt den Workspace unverändert
+        self.assertIn(Path("a.gpx"), gui.gpx_input)
+        self.assertIn(Path("b.gpx"), gui.gpx_output)
+        self.assertEqual(cleared, [True])
+
+    def test_clear_workspace_clears_after_confirmation(self):
+        gui = MainGui.__new__(MainGui)
+        gui.gpx_input = {Path("a.gpx"): GPX()}
+        gui.gpx_output = {Path("b.gpx"): GPX()}
+        gui._file_summaries = {}
+        gui._file_origins = {}
+        gui._file_labels = {}
+        gui._virtual_files = set()
+        gui.logger = logging.getLogger(__name__)
+        gui._rebuild_artifact_tree = lambda: None
+        gui._show_empty_inspector = lambda: None
+
+        def askyesno(title, message, **kwargs):
+            return True
+
+        messagebox_askyesno = messagebox.askyesno
+        try:
+            messagebox.askyesno = askyesno
+            gui._clear_files()
+        finally:
+            messagebox.askyesno = messagebox_askyesno
+
+        self.assertEqual(gui.gpx_input, {})
+        self.assertEqual(gui.gpx_output, {})
 
 
 if __name__ == "__main__":
