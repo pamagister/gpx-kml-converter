@@ -147,6 +147,47 @@ class TestGuiWorkflow(unittest.TestCase):
             self.assertEqual(gui.gpx_output, {})
             self.assertEqual(source_path.read_bytes(), original_contents)
 
+    def test_removal_of_two_input_files(self):
+        with TemporaryDirectory() as temp_dir:
+            path_a = Path(temp_dir) / "a.gpx"
+            path_b = Path(temp_dir) / "b.gpx"
+            gpx_a = GPX()
+            gpx_b = GPX()
+            path_a.write_text(gpx_a.to_xml(), encoding="utf-8")
+            path_b.write_text(gpx_b.to_xml(), encoding="utf-8")
+            gui = MainGui.__new__(MainGui)
+            gui.artifact_tree = SelectedItems("file_a", "file_b")
+            gui._tree_identity = {
+                "file_a": ArtifactIdentity("input", path_a, "file"),
+                "file_b": ArtifactIdentity("input", path_b, "file"),
+            }
+            gui._tree_group_identity = {}
+            gui.gpx_input = {path_a: gpx_a, path_b: gpx_b}
+            gui.gpx_output = {}
+            gui._file_summaries = {}
+            gui._file_origins = {
+                ("input", path_a): FileOrigin(path_a),
+                ("input", path_b): FileOrigin(path_b),
+            }
+            gui._file_labels = {}
+            gui._virtual_files = set()
+            gui._identity_tree_item = {}
+            gui.logger = logging.getLogger(__name__)
+            gui._on_browser_selection = lambda: None
+            gui._show_empty_inspector = lambda: None
+
+            def rebuild_tree():
+                pass
+
+            gui._rebuild_artifact_tree = rebuild_tree
+
+            result = gui._delete_selected_workspace_items()
+
+            self.assertEqual(result, "break")
+            self.assertNotIn(path_a, gui.gpx_input)
+            self.assertNotIn(path_b, gui.gpx_input)
+            self.assertEqual(gui.gpx_output, {})
+
     def test_removal_across_mixed_artifacts_and_multiple_files(self):
         with TemporaryDirectory() as temp_dir:
             path_a = Path(temp_dir) / "a.gpx"

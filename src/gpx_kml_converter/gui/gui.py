@@ -305,14 +305,14 @@ class MainGui:
         tree_frame.grid_columnconfigure(0, weight=1)
         self.artifact_tree.bind("<<TreeviewSelect>>", self._on_browser_selection)
         self.artifact_tree.bind("<Double-Button-1>", self._open_selected_tree_file)
-        self.artifact_tree.bind("<Button-3>", self._show_browser_context_menu)
+        self.artifact_tree.bind("<ButtonRelease-3>", self._show_browser_context_menu)
         self.artifact_tree.bind("<Shift-F10>", self._show_keyboard_context_menu)
         self.artifact_tree.bind("<Menu>", self._show_keyboard_context_menu)
         self.artifact_tree.bind("<Delete>", self._delete_selected_workspace_items)
         self.artifact_tree.bind("<KP_Delete>", self._delete_selected_workspace_items)
         if sys.platform == "darwin":
-            self.artifact_tree.bind("<Button-2>", self._show_browser_context_menu)
-            self.artifact_tree.bind("<Control-Button-1>", self._show_browser_context_menu)
+            self.artifact_tree.bind("<ButtonRelease-2>", self._show_browser_context_menu)
+            self.artifact_tree.bind("<Control-ButtonRelease-1>", self._show_browser_context_menu)
 
         self.batch_status_label = ttk.Label(
             parent_frame, textvariable=self.batch_status_var, anchor=tk.W
@@ -698,11 +698,12 @@ class MainGui:
         return next(iter(selected_kinds)) if len(selected_kinds) == 1 else None
 
     def _show_browser_context_menu(self, event):
+        # Show the menu on button release (not press) so a short right-click
+        # does not immediately invoke the top menu entry. The mouse button is
+        # already up when the menu appears, so no item is triggered by accident.
         item_id = self.artifact_tree.identify_row(event.y)
         if item_id:
-            self.artifact_tree.after_idle(
-                lambda: self._show_browser_context_menu_at(item_id, event.x_root, event.y_root)
-            )
+            self._show_browser_context_menu_at(item_id, event.x_root, event.y_root)
         return "break"
 
     def _show_keyboard_context_menu(self, _event=None):
@@ -811,6 +812,10 @@ class MainGui:
                         identity.file_path,
                         identity.kind,
                     )
+                    if key in artifact_targets and artifact_targets[key] is None:
+                        # A group node already selected "all" for this kind;
+                        # the individual index is redundant.
+                        continue
                     if key not in artifact_targets:
                         artifact_targets[key] = set()
                     artifact_targets[key].add(identity.index)
@@ -845,9 +850,12 @@ class MainGui:
                 file_map = self.gpx_input if collection == "input" else self.gpx_output
                 source_gpx = file_map.get(file_path)
                 if source_gpx is None:
-                    self.logger.error(f"GPX object not found for path: {file_path}")
-                    messagebox.showerror("Error", "The selected GPX data is no longer available.")
-                    return "break"
+                    # The file was already removed as part of this selection
+                    # (e.g. a file node plus an artifact node for the same path).
+                    self.logger.warning(
+                        f"GPX object no longer available for {file_path}, skipping removal."
+                    )
+                    continue
 
                 artifacts = {
                     "track": source_gpx.tracks,
