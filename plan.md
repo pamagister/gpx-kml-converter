@@ -90,7 +90,7 @@ Acceptance criteria:
 - "Clear Workspace" löscht den Workspace nur nach expliziter Nutzerbestätigung.
 - Abbruch lässt den Workspace unverändert.
 
-#### 2.2 Warnung bei Verarbeitung ohne Selektion [ ]
+#### 2.2 Warnung bei Verarbeitung ohne Selektion [x]
 - Wenn keine Datei selektiert ist und "Alle X Dateien" verarbeitet würden, Hinweis-Dialog anzeigen ("Alle X Dateien verarbeiten?").
 - Auswahl kann bestätigt oder abgebrochen werden.
 

@@ -1,8 +1,8 @@
 import logging
+import time
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
-
 from tkinter import messagebox
 
 from gpxpy.gpx import GPX, GPXRoute, GPXTrack, GPXWaypoint
@@ -47,6 +47,31 @@ class _FakeProgress:
 
     def configure(self, **kwargs):
         self.value = kwargs.get("value")
+
+    def stop(self):
+        pass
+
+
+class _FakeConfigParam:
+    def __init__(self, value):
+        self.value = value
+
+
+class _FakeConfigCli:
+    output = _FakeConfigParam("/tmp/out")
+    tolerance = _FakeConfigParam(10.0)
+    elevation = _FakeConfigParam(False)
+
+
+class _FakeConfigApp:
+    date_format = _FakeConfigParam("%Y-%m-%d")
+
+
+class _FakeConfigManager:
+    """Minimal stand-in providing the config attributes _run_processing reads."""
+
+    cli = _FakeConfigCli()
+    app = _FakeConfigApp()
 
 
 class TestGuiWorkflow(unittest.TestCase):
@@ -365,6 +390,109 @@ class TestGuiWorkflow(unittest.TestCase):
 
         self.assertEqual(gui.gpx_input, {})
         self.assertEqual(gui.gpx_output, {})
+
+    def test_processing_without_selection_asks_confirmation_and_cancel_aborts(self):
+        gui = MainGui.__new__(MainGui)
+        gui.gpx_input = {Path("a.gpx"): GPX(), Path("b.gpx"): GPX()}
+        gui.gpx_output = {}
+        gui._file_summaries = {}
+        gui._file_origins = {}
+        gui._file_labels = {}
+        gui._virtual_files = set()
+        gui.logger = logging.getLogger(__name__)
+        gui.root = type("R", (), {"after": lambda self, *a, **k: None})()
+        gui.config_manager = _FakeConfigManager()
+        gui.progress = _FakeProgress()
+        gui.current_file_var = _FakeVariable()
+        gui.artifact_tree = SelectedItems()
+        gui.run_buttons = {}
+        gui.clear_files_button = type("B", (), {"config": lambda self, **kw: None})()
+
+        calls = []
+
+        def askyesno(title, message, **kwargs):
+            calls.append(message)
+            return False
+
+        processed = []
+
+        def fake_process(
+            input_files, *, mode, output, tolerance, date_format, elevation, logger, source_origins
+        ):
+            processed.append(input_files)
+            return {}
+
+        import gpx_kml_converter.gui.gui as gui_module
+
+        orig_process = gui_module.process_gpx_files
+        gui_module.process_gpx_files = fake_process
+        messagebox_askyesno = messagebox.askyesno
+        try:
+            messagebox.askyesno = askyesno
+            gui._run_processing("compress")
+        finally:
+            gui_module.process_gpx_files = orig_process
+            messagebox.askyesno = messagebox_askyesno
+
+        # Der Bestätigungsdialog wird angezeigt; Abbruch verhindert die Verarbeitung.
+        self.assertEqual(len(calls), 1)
+        self.assertIn("keine ist selektiert", calls[0])
+        self.assertIn("verarbeitet werden?", calls[0])
+        self.assertEqual(processed, [])
+
+    def test_processing_without_selection_confirmed_processes_all(self):
+        gui = MainGui.__new__(MainGui)
+        gpx_a, gpx_b = GPX(), GPX()
+        gui.gpx_input = {Path("a.gpx"): gpx_a, Path("b.gpx"): gpx_b}
+        gui.gpx_output = {}
+        gui._file_summaries = {}
+        gui._file_origins = {}
+        gui._file_labels = {}
+        gui._virtual_files = set()
+        gui.logger = logging.getLogger(__name__)
+        gui.root = type("R", (), {"after": lambda self, *a, **k: None})()
+        gui.config_manager = _FakeConfigManager()
+        gui.progress = _FakeProgress()
+        gui.current_file_var = _FakeVariable()
+        gui.artifact_tree = SelectedItems()
+        gui.run_buttons = {}
+        gui.clear_files_button = type("B", (), {"config": lambda self, **kw: None})()
+
+        calls = []
+
+        def askyesno(title, message, **kwargs):
+            calls.append(message)
+            return True
+
+        processed = []
+
+        def fake_process(
+            input_files, *, mode, output, tolerance, date_format, elevation, logger, source_origins
+        ):
+            processed.append(list(input_files))
+            return {}
+
+        import gpx_kml_converter.gui.gui as gui_module
+
+        orig_process = gui_module.process_gpx_files
+        gui_module.process_gpx_files = fake_process
+        messagebox_askyesno = messagebox.askyesno
+        try:
+            messagebox.askyesno = askyesno
+            gui._run_processing("compress")
+        finally:
+            gui_module.process_gpx_files = orig_process
+            messagebox.askyesno = messagebox_askyesno
+
+        # Warten, bis der Verarbeitungs-Thread abgeschlossen ist.
+        deadline = time.time() + 5
+        while not processed and time.time() < deadline:
+            time.sleep(0.05)
+
+        self.assertEqual(len(calls), 1)
+        self.assertIn("keine ist selektiert", calls[0])
+        self.assertEqual(len(processed), 1)
+        self.assertEqual(len(processed[0]), 2)
 
 
 if __name__ == "__main__":

@@ -94,9 +94,7 @@ class GuiLogWriter:
         # This is a basic approach; more robust path detection might be needed for edge cases.
         import re
 
-        path_match = re.search(
-            r"([A-Za-z]:[\\/][\S ]*|[\\][\\/][\S ]*|[\w/.-]+[/][\S ]*)\b", text
-        )
+        path_match = re.search(r"([A-Za-z]:[\\/][\S ]*|[\\][\\/][\S ]*|[\w/.-]+[/][\S ]*)\b", text)
         if path_match:
             path = path_match.group(0).strip()
             # Ensure the path exists and is a directory to make it clickable
@@ -679,7 +677,11 @@ class MainGui:
 
     def _clear_log(self):
         """Clear the log text widgets."""
-        for text_widget in (getattr(self, "log_text", None), getattr(self, "log_window_text", None)):
+        text_widgets = (
+            getattr(self, "log_text", None),
+            getattr(self, "log_window_text", None),
+        )
+        for text_widget in text_widgets:
             if text_widget is not None:
                 try:
                     text_widget.delete(1.0, tk.END)
@@ -1246,9 +1248,29 @@ class MainGui:
         if not selected_paths:
             messagebox.showwarning("Warning", "Load at least one input file to process.")
             return
+
+        total_inputs = len(self.gpx_input)
+        selected_input_paths = self._selected_tree_file_paths("input")
+        mode_label = dict(self.processing_modes).get(mode, mode)
+
+        # Wenn keine Datei einzeln selektiert ist, werden alle geladenen
+        # Eingabedateien verarbeitet. Das erfordert eine explizite Bestätigung.
+        if total_inputs and not selected_input_paths:
+            confirm_message = (
+                f"Es sind {total_inputs} Datei(en) geladen, aber keine ist "
+                f"selektiert.\n\nSollen wirklich alle {total_inputs} Datei(en) "
+                f"mit '{mode_label}' verarbeitet werden?"
+            )
+            if not messagebox.askyesno(
+                "Alle Dateien verarbeiten?",
+                confirm_message,
+                icon=messagebox.QUESTION,
+            ):
+                return
+            selected_paths = list(self.gpx_input)
+
         selected_gpx_objects = [self.gpx_input[path] for path in selected_paths]
 
-        mode_label = dict(self.processing_modes).get(mode, mode)
         total = len(selected_paths)
         self.progress.configure(value=0)
         if total == 1:
