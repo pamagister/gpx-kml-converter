@@ -55,6 +55,15 @@ The application features a comprehensive GUI that simplifies the process of mana
 
 * **Integrated Logging:** A dedicated log output area provides real-time feedback on application operations, warnings, and errors. Directory paths mentioned in the logs are clickable, allowing direct navigation to the output folders. 📝🔗
 
+#### Getting started with the GUI
+
+1. **Open files:** Click **Open Files** (or **File → Open…**) and select GPX, KML, or ZIP files. They appear under **Inputs**; recently opened files are listed under **File → Recent Files**.
+2. **Inspect:** Select a file to view its track, route, and POI counts; the selection is shown on the map, and tracks also show an elevation profile.
+3. **Process:** Choose **Compress Files**, **Merge Files**, or **Extract POIs from Tracks**. A preview asks for confirmation before processing starts.
+4. **Find the result:** The completion summary shows how many files were processed and where; click the output path to open the containing folder.
+
+For details, see the [GUI documentation](usage/gui.md).
+
 ### 2.2. GPX/KML File Processing Capabilities 🗺️
 
 The core strength of the application lies in its ability to handle GPX and KML files with several powerful processing modes:

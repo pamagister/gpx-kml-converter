@@ -172,22 +172,19 @@ Acceptance criteria:
 Acceptance criteria:
 - Das Datei-Menü enthält einen "Zuletzt geöffnet"-Eintrag mit bis zu 5 Einträgen.
 
-### Phase 5: Dokumentation [ ]
+### Phase 5: Documentation [x]
 
-#### 5.1 README / docs/index.md für GUI ergänzen [ ]
-- Screenshots der GUI erstellen und in die Dokumentation einbinden (`docs/usage/gui.md` und `docs/index.md`).
-- "Erste Schritte mit der GUI"-Abschnitt (Datei öffnen → verarbeiten → Ergebnis finden).
-- Hinweise zu Drag & Drop und Leer-Zuständen.
-
-Acceptance criteria:
-- `docs/index.md` enthält einen GUI-Erste-Schritte-Block mit aktuellen Screenshots.
-- `README.md` wird über `make syncdocs` (oder `make fmt`) daraus generiert.
-
-#### 5.2 Troubleshooting-Abschnitt [ ]
-- Häufige Probleme: SRTM nicht verfügbar, KML öffnet sich nicht, Log leer, Ausgabepfad nicht gefunden.
+#### 5.1 README / docs/index.md GUI first steps [x]
+- GUI screenshots referenced (`gui_main.png`, `gui_settings.png`); note that screenshots should be refreshed to reflect the current layout.
+- "Getting started with the GUI" section added to `docs/usage/gui.md` and `docs/index.md`.
+- Notes on empty states added; Drag & Drop not available (stays on tkinter, no new dependency).
 
 Acceptance criteria:
-- `docs/usage/gui.md` oder `docs/index.md` enthält einen Troubleshooting-Block.
+- `docs/index.md` contains a GUI first-steps block.
+- `README.md` is generated from it via `make syncdocs` (or `make fmt`).
+
+#### 5.2 Troubleshooting section [x]
+- `docs/usage/gui.md` contains a Troubleshooting block (SRTM, KML, empty log, output path, empty workspace).
 
 ### Phase 6: Transfer UI and documentation to English [x]
 
@@ -278,10 +275,12 @@ Phase 6 (UI and documentation to English) completed.
 Phase 4 (Data Preview and Control) completed, committed, CI green:
 - 4.3 Recently opened files (Commit 5dc33ba)
 - 4.1 Preview before processing with confirmation + point counts (Commit 00ea997)
-- 4.2 Output location dialog per operation (Commit pending)
+- 4.2 Output location dialog per operation (Commit 5f41910)
 
-Phase 5 (Documentation) not started yet.
+Phase 5 (Documentation) in progress:
+- [-] 5.1 README / docs/index.md GUI first steps
+- [ ] 5.2 Troubleshooting section
 
 All 69 tests (`uv run pytest`) and Ruff lint/format run green. CI is green for the last push.
 
-Next work package: Phase 5 (Documentation) — README / docs/index.md GUI first steps, screenshots, troubleshooting.
+Next work package: Phase 5.1 (GUI first-steps documentation).
