@@ -81,7 +81,7 @@ Acceptance criteria:
 - Nach Verarbeitung ist im Hauptfenster ersichtlich, wie viele Dateien verarbeitet wurden und wo die Ergebnisse liegen.
 - Ein Klick auf den Ausgabepfad öffnet den Ordner im Dateisystem.
 
-### Phase 2: Selektionssicherheit und Workflow [ ]
+### Phase 2: Selektionssicherheit und Workflow [x]
 
 #### 2.1 Bestätigung bei "Clear Workspace" [x]
 - Vor dem Leeren des gesamten Workspaces einen Bestätigungsdialog anzeigen.
@@ -102,15 +102,13 @@ Acceptance criteria:
 - Dateien per Drag & Drop in den Workspace ziehen können (GPX, KML, ZIP).
 - Gleiches Verhalten wie beim "Open Files"-Dialog.
 
-Blockiert: tkinter hat kein plattformunabhängiges Drag & Drop in der
-Standardbibliothek. Eine Implementierung erfordert `tkinterdnd2` (neue
-externen Abhängigkeit), was Phase 1–3 laut Plan explizit ausschließt.
-Entscheidung nötig: `tkinterdnd2` zu pyproject.toml hinzufügen oder
-Workpackage 2.3 auf eine spätere Phase verschieben.
+Deferred / dropped: The user wants to stay with the current tkinter stack and not
+add a new external dependency (`tkinterdnd2`). Drag & Drop is therefore not
+implemented in this plan. It can be revisited in a later phase if a dependency
+is explicitly approved.
 
 Acceptance criteria:
-- Ziehen einer GPX/KML/ZIP-Datei in den Workspace lädt die Datei.
-- Ungültige Dateien werden ignoriert und im Log gewarnt.
+- (none — workpackage dropped)
 
 #### 2.4 Undo für Workspace-Entfernung (optional, geringer Aufwand) [x]
 - "Letzte Änderung rückgängig" für Artefakt-Entfernung im Workspace (In-Memory-Kopie vor der Änderung).
@@ -191,6 +189,36 @@ Acceptance criteria:
 Acceptance criteria:
 - `docs/usage/gui.md` oder `docs/index.md` enthält einen Troubleshooting-Block.
 
+### Phase 6: UI und Dokumentation auf Englisch übertragen [ ]
+
+All user-visible text (GUI labels, dialogs, tooltips, status messages), code
+comments, and documentation are transferred to English. New GUI work from Phase
+3–5 onwards uses English labels from the start.
+
+#### 6.1 GUI labels and dialogs auf Englisch [ ]
+- Button labels, menu entries, tooltips, status and summary labels, and dialog
+  texts are translated from German to English (e.g. "Verarbeite …" →
+  "Processing …", "Workspace leeren" → "Clear Workspace").
+- Existing German GUI strings are reviewed and translated.
+
+Acceptance criteria:
+- No German user-visible strings remain in `src/gpx_kml_converter/gui/`.
+- Tooltips and dialogs are in English.
+
+#### 6.2 Code comments auf Englisch [ ]
+- Comments added in Phases 1–2 are translated to English.
+- New comments are written in English.
+
+Acceptance criteria:
+- Comments in `src/gpx_kml_converter/gui/` are in English.
+
+#### 6.3 Dokumentation auf Englisch [ ]
+- `docs/usage/gui.md`, `docs/index.md`, and `README.md` are reviewed and
+  translated to English where they contain German.
+
+Acceptance criteria:
+- User-facing documentation is in English.
+
 ## 5. Acceptance criteria and verification expectations
 
 Globale Abnahmekriterien (alle Phasen):
@@ -231,18 +259,20 @@ Keine offenen Fragen mehr; alle Punkte wurden mit dem Nutzer abgestimmt:
 
 ## Progress / Handoff (2026-11-09)
 
-Phase 1 (Process-Feedback und Logging) abgeschlossen, committet und CI grün:
-- 1.1 Docked Log-Panel im Hauptfenster (getrenntes Toplevel über "View → Show Log" bleibt).
-- 1.2 Deterministische Fortschrittsanzeige + aktuelle Datei ("Verarbeite X von Y"); nicht-blockierende Fehleranzeige.
-- 1.3 Abschluss-Zusammenfassung mit klickbarem Ausgabepfad.
-Commits: bc06652, 88966cb, 3d2ab6a. Issue: #11. Tests: 61 insgesamt grün (incl. neuer GUI-Tests).
+Phase 1 (Process-Feedback and Logging) completed, committed, CI green:
+- 1.1 Docked Log Panel in the main window (separate "View → Show Log" window remains).
+- 1.2 Deterministic progress bar + current file label ("Processing …"); non-blocking error display.
+- 1.3 Completion summary with clickable output path.
+Commits: bc06652, 88966cb, 3d2ab6a. Issue: #11. Tests: 61 total green (incl. new GUI tests).
 
-Phase 2 (Selektionssicherheit und Workflow) teilweise abgeschlossen:
-- [x] 2.1 Bestätigung bei "Clear Workspace" (Commit b1ab79d)
-- [x] 2.2 Warnung bei Verarbeitung ohne Selektion ("Alle X Dateien verarbeiten?") (Commit 6b3140e)
-- [~] 2.3 Drag & Drop: BLOCKIERT — tkinter hat kein plattformunabhängiges DnD in der Stdlib; `tkinterdnd2` wäre neue externe Abhängigkeit, was Phase 1–3 ausschließt. Entscheidung nötig: Dependency hinzufügen oder Workpackage verschieben.
-- [x] 2.4 Einmaliger Undo für Workspace-Entfernung (Commit 20ad7f1)
+Phase 2 (Selection Safety and Workflow) completed (workpackage 2.3 dropped per user decision to stay on tkinter):
+- [x] 2.1 Confirmation on "Clear Workspace" (Commit b1ab79d)
+- [x] 2.2 Warning when processing without selection ("Process all X files?") (Commit 6b3140e)
+- [~] 2.3 Drag & Drop: deferred/dropped — user wants to stay on current tkinter, no new dependency.
+- [x] 2.4 One-level Undo for workspace removal (Commit 20ad7f1)
 
-Offen für Phase 2: 2.3 (Drag & Drop). Phase 3–5 noch nicht angefangen.
+Phase 3–5 not started yet. New Phase 6 (UI and documentation to English) added after Phase 5.
 
-Alle 61 Tests (`uv run pytest`) und Ruff Lint/Format laufen grün. CI (GitHub Actions: ubuntu, macOS, Windows + Linter) ist grün für den letzten Push (20ad7f1).
+All 61 tests (`uv run pytest`) and Ruff lint/format run green. CI (GitHub Actions: ubuntu, macOS, Windows + linter) is green for the last push (20ad7f1).
+
+Next work package: Phase 6.1 (translate GUI labels and dialogs to English), then Phase 3–5 using English labels from the start.
