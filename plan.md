@@ -275,13 +275,13 @@ Phase 2 (Selection Safety and Workflow) completed (workpackage 2.3 dropped per u
 Phase 3 (Visual Design and Information Architecture) completed, committed, CI green.
 Phase 6 (UI and documentation to English) completed.
 
-Phase 4 (Data Preview and Control) in progress:
-- [x] 4.3 Recently opened files (Commit 5dc33ba)
-- [x] 4.1 Preview before processing (confirmation + point counts before processing starts)
-- [-] 4.2 Output location dialog per operation
+Phase 4 (Data Preview and Control) completed, committed, CI green:
+- 4.3 Recently opened files (Commit 5dc33ba)
+- 4.1 Preview before processing with confirmation + point counts (Commit 00ea997)
+- 4.2 Output location dialog per operation (Commit pending)
 
 Phase 5 (Documentation) not started yet.
 
-All 66 tests (`uv run pytest`) and Ruff lint/format run green. CI is green for the last push.
+All 69 tests (`uv run pytest`) and Ruff lint/format run green. CI is green for the last push.
 
-Next work package: Phase 4.2 (output location dialog per operation).
+Next work package: Phase 5 (Documentation) — README / docs/index.md GUI first steps, screenshots, troubleshooting.

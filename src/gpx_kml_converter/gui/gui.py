@@ -216,6 +216,9 @@ class MainGui:
         # Recently opened files (max 5) for quick re-opening.
         self.recent_files: list[Path] = []
         self.recent_menu: tk.Menu | None = None
+        # Custom output directory chosen for the current processing run (overrides
+        # the global settings path when set).
+        self.custom_output_dir: Path | None = None
 
         # Initialize GeoFileManager
         self.geo_file_manager = GeoFileManager(logger=self.logger)
@@ -412,6 +415,30 @@ class MainGui:
             parent_frame, textvariable=self.current_file_var, anchor=tk.W
         )
         self.current_file_label.pack(fill=tk.X, padx=4, pady=(0, 4))
+
+        # Per-run output directory override (optional, per Phase 4.2).
+        output_row = ttk.Frame(parent_frame)
+        output_row.pack(fill=tk.X, padx=4, pady=(6, 0))
+        output_row.columnconfigure(1, weight=1)
+        ttk.Label(output_row, text="Output folder:").grid(row=0, column=0, sticky="w")
+        ttk.Button(
+            output_row,
+            text="Choose...",
+            command=self._choose_output_folder,
+        ).grid(row=0, column=1, sticky="e", padx=(4, 0))
+        self.output_folder_var = tk.StringVar(value="Using default (settings)")
+        ttk.Label(output_row, textvariable=self.output_folder_var, anchor=tk.W).grid(
+            row=1, column=0, columnspan=2, sticky="w", pady=(2, 0)
+        )
+
+    def _choose_output_folder(self):
+        """Let the user choose a custom output directory for this processing run."""
+        folder = filedialog.askdirectory(title="Choose output directory")
+        if not folder:
+            return
+        self.custom_output_dir = Path(folder)
+        self.output_folder_var.set(str(folder))
+        self.logger.info(f"Custom output directory set: {folder}")
 
     def _build_metadata_display(self, parent_frame):
         """Build the metadata display with scrollbars."""
@@ -1462,10 +1489,16 @@ class MainGui:
 
         def processing_thread():
             try:
+                # Per-run output directory override, if the user chose one.
+                output_dir = (
+                    self.custom_output_dir
+                    if self.custom_output_dir is not None
+                    else self.config_manager.cli.output.value
+                )
                 processed_gpx_map = process_gpx_files(
                     selected_gpx_objects,
                     mode=mode,
-                    output=self.config_manager.cli.output.value,
+                    output=output_dir,
                     tolerance=self.config_manager.cli.tolerance.value,
                     date_format=self.config_manager.app.date_format.value,
                     elevation=self.config_manager.cli.elevation.value,

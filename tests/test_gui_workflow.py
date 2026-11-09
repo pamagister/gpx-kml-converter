@@ -439,6 +439,7 @@ class TestGuiWorkflow(unittest.TestCase):
         gui.artifact_tree = SelectedItems()
         gui.run_buttons = {}
         gui.clear_files_button = type("B", (), {"config": lambda self, **kw: None})()
+        gui.custom_output_dir = None
 
         calls = []
 
@@ -489,6 +490,7 @@ class TestGuiWorkflow(unittest.TestCase):
         gui.artifact_tree = SelectedItems()
         gui.run_buttons = {}
         gui.clear_files_button = type("B", (), {"config": lambda self, **kw: None})()
+        gui.custom_output_dir = None
 
         calls = []
 
@@ -607,6 +609,7 @@ class TestProcessingPreview(unittest.TestCase):
         gui._tree_group_identity = {}
         gui.run_buttons = {}
         gui.clear_files_button = type("B", (), {"config": lambda self, **kw: None})()
+        gui.custom_output_dir = None
         return gui, path
 
     def test_processing_with_selection_cancel_preview_aborts(self):
@@ -679,6 +682,102 @@ class TestProcessingPreview(unittest.TestCase):
             time.sleep(0.05)
         self.assertEqual(len(processed), 1)
         self.assertEqual(len(processed[0]), 1)
+
+
+class TestOutputFolder(unittest.TestCase):
+    def setUp(self):
+        self.gui = MainGui.__new__(MainGui)
+        self.gui.custom_output_dir = None
+        self.gui.output_folder_var = _FakeVariable(value="Using default (settings)")
+        self.gui.logger = logging.getLogger(__name__)
+
+    def test_choose_output_folder_sets_custom_dir(self):
+        chosen = []
+
+        def askdirectory(title, **kwargs):
+            chosen.append(title)
+            return "/custom/output"
+
+        import gpx_kml_converter.gui.gui as gui_module
+
+        orig_askdirectory = gui_module.filedialog.askdirectory
+        gui_module.filedialog.askdirectory = askdirectory
+        try:
+            self.gui._choose_output_folder()
+        finally:
+            gui_module.filedialog.askdirectory = orig_askdirectory
+
+        self.assertIsNotNone(self.gui.custom_output_dir)
+        self.assertEqual(self.gui.custom_output_dir.name, "output")
+        self.assertEqual(self.gui.output_folder_var.get(), "/custom/output")
+        self.assertEqual(chosen, ["Choose output directory"])
+
+    def test_choose_output_folder_cancel_leaves_default(self):
+        import gpx_kml_converter.gui.gui as gui_module
+
+        orig_askdirectory = gui_module.filedialog.askdirectory
+        gui_module.filedialog.askdirectory = lambda *a, **k: ""
+        try:
+            self.gui._choose_output_folder()
+        finally:
+            gui_module.filedialog.askdirectory = orig_askdirectory
+
+        self.assertIsNone(self.gui.custom_output_dir)
+        self.assertEqual(self.gui.output_folder_var.get(), "Using default (settings)")
+
+    def test_processing_uses_custom_output_dir(self):
+        gui = MainGui.__new__(MainGui)
+        gpx = GPX()
+        gpx.waypoints.append(GPXWaypoint(latitude=50.0, longitude=10.0, name="WP"))
+        path = Path("a.gpx")
+        gui.gpx_input = {path: gpx}
+        gui.gpx_output = {}
+        gui._file_summaries = {}
+        gui._file_origins = {}
+        gui._file_labels = {}
+        gui._virtual_files = set()
+        gui.logger = logging.getLogger(__name__)
+        gui.root = type("R", (), {"after": lambda self, *a, **k: None})()
+        gui.config_manager = _FakeConfigManager()
+        gui.progress = _FakeProgress()
+        gui.current_file_var = _FakeVariable()
+        gui.artifact_tree = SelectedItems("file_a")
+        gui._tree_identity = {"file_a": ArtifactIdentity("input", path, "file")}
+        gui._tree_group_identity = {}
+        gui.run_buttons = {}
+        gui.clear_files_button = type("B", (), {"config": lambda self, **kw: None})()
+        gui.custom_output_dir = Path("/custom/output")
+        gui.output_folder_var = _FakeVariable()
+
+        seen_output = []
+
+        def askyesno(title, message, **kwargs):
+            return True
+
+        def fake_process(
+            input_files, *, mode, output, tolerance, date_format, elevation, logger, source_origins
+        ):
+            seen_output.append(output)
+            return {}
+
+        import gpx_kml_converter.gui.gui as gui_module
+
+        orig_process = gui_module.process_gpx_files
+        gui_module.process_gpx_files = fake_process
+        messagebox_askyesno = messagebox.askyesno
+        try:
+            messagebox.askyesno = askyesno
+            gui._run_processing("compress")
+        finally:
+            gui_module.process_gpx_files = orig_process
+            messagebox.askyesno = messagebox_askyesno
+
+        import time
+
+        deadline = time.time() + 5
+        while not seen_output and time.time() < deadline:
+            time.sleep(0.05)
+        self.assertEqual(seen_output, [Path("/custom/output")])
 
 
 if __name__ == "__main__":
