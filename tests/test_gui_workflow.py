@@ -527,5 +527,63 @@ class TestGuiWorkflow(unittest.TestCase):
         self.assertEqual(len(processed[0]), 2)
 
 
+class TestRecentFiles(unittest.TestCase):
+    def setUp(self):
+        self.gui = MainGui.__new__(MainGui)
+        self.gui.recent_files = []
+        self.gui.recent_menu = type(
+            "M",
+            (),
+            {
+                "delete": lambda self, *a, **k: None,
+                "add_command": lambda self, *a, **k: None,
+            },
+        )()
+        self.gui.logger = logging.getLogger(__name__)
+        self.gui.geo_file_manager = type(
+            "GM",
+            (),
+            {"load_files_with_origins": lambda self, paths: {}},
+        )()
+        self.gui.gpx_input = {}
+        self.gui.gpx_output = {}
+        self.gui._rebuild_artifact_tree = lambda: None
+        self.gui._select_all_input_files = lambda: None
+
+    def test_add_recent_file_keeps_max_five_and_deduplicates(self):
+        paths = [Path(f"file{i}.gpx").resolve() for i in range(7)]
+        for p in paths:
+            self.gui._add_recent_file(p)
+        self.assertEqual(len(self.gui.recent_files), 5)
+        # Most recently added is first.
+        self.assertEqual(self.gui.recent_files[0], paths[6])
+        self.assertEqual(self.gui.recent_files[-1], paths[2])
+
+    def test_add_recent_file_moves_existing_to_front(self):
+        first, second = Path("a.gpx").resolve(), Path("b.gpx").resolve()
+        self.gui._add_recent_file(first)
+        self.gui._add_recent_file(second)
+        self.gui._add_recent_file(first)
+        self.assertEqual(self.gui.recent_files, [first, second])
+
+    def test_open_recent_file_skips_missing_and_removes_it(self):
+        missing = Path("does_not_exist.gpx")
+        shown = []
+
+        def showerror(title, message, **kwargs):
+            shown.append(message)
+
+        import tkinter.messagebox as messagebox
+
+        orig = messagebox.showerror
+        messagebox.showerror = showerror
+        try:
+            self.gui._open_recent_file(missing)
+        finally:
+            messagebox.showerror = orig
+        self.assertEqual(shown, [f"File not found: {missing}"])
+        self.assertNotIn(missing, self.gui.recent_files)
+
+
 if __name__ == "__main__":
     unittest.main()

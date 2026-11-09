@@ -166,7 +166,7 @@ Acceptance criteria:
 Acceptance criteria:
 - Der Nutzer kann pro Verarbeitungsvorgang einen eigenen Ausgabepfad wählen.
 
-#### 4.3 Zuletzt geöffnete Dateien [ ]
+#### 4.3 Recently opened files [x]
 - Datei-Menü listet zuletzt geöffnete Dateien zur schnellen Wiederwahl.
 
 Acceptance criteria:
@@ -272,17 +272,16 @@ Phase 2 (Selection Safety and Workflow) completed (workpackage 2.3 dropped per u
 - [~] 2.3 Drag & Drop: deferred/dropped — user wants to stay on current tkinter, no new dependency.
 - [x] 2.4 One-level Undo for workspace removal (Commit 20ad7f1)
 
-Phase 3 (Visual Design and Information Architecture) completed, committed, CI green:
-- 3.1 Layout: workspace now takes more space than the map (weights 3/2/2); map permanently visible.
-- 3.2 Icons + consistent button styling on the three processing buttons.
-- 3.3 Empty-state onboarding hint ("Workspace is empty — click 'Open Files' ...").
-- 3.4 About dialog shows real version from _version.py and author "pamagister".
+Phase 3 (Visual Design and Information Architecture) completed, committed, CI green.
+Phase 6 (UI and documentation to English) completed.
 
-Phase 6 (UI and documentation to English) completed: all GUI labels, dialogs, tooltips, and code
-comments in English; docs already in English.
+Phase 4 (Data Preview and Control) in progress:
+- [x] 4.3 Recently opened files (Commit pending)
+- [ ] 4.1 Preview before processing
+- [ ] 4.2 Output location dialog per operation
 
-Phase 4 (Data Preview and Control) and Phase 5 (Documentation) not started yet.
+Phase 5 (Documentation) not started yet.
 
-All 61 tests (`uv run pytest`) and Ruff lint/format run green. CI is green for the last push.
+All 64 tests (`uv run pytest`) and Ruff lint/format run green. CI is green for the last push.
 
-Next work package: Phase 4.1 (preview before processing) or Phase 5 (documentation).
+Next work package: Phase 4.1 (preview before processing).

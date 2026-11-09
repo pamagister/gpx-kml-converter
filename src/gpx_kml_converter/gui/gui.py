@@ -213,6 +213,9 @@ class MainGui:
         self.batch_status_var = tk.StringVar(master=self.root)
         # One-level undo snapshot for the last workspace removal.
         self._undo_snapshot: dict | None = None
+        # Recently opened files (max 5) for quick re-opening.
+        self.recent_files: list[Path] = []
+        self.recent_menu: tk.Menu | None = None
 
         # Initialize GeoFileManager
         self.geo_file_manager = GeoFileManager(logger=self.logger)
@@ -670,6 +673,9 @@ class MainGui:
         file_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label="File", menu=file_menu)
         file_menu.add_command(label="Open...", command=self._open_files)
+        self.recent_menu = tk.Menu(file_menu, tearoff=0)
+        file_menu.add_cascade(label="Recent Files", menu=self.recent_menu)
+        self._rebuild_recent_menu()
         file_menu.add_separator()
         # Create Run menu options dynamically
         for mode, label in self.processing_modes:
@@ -1339,6 +1345,48 @@ class MainGui:
         if new_files_loaded > 0:
             self._rebuild_artifact_tree()
             self._select_all_input_files()
+            for path in loaded_gpx_map:
+                self._add_recent_file(path)
+
+    def _add_recent_file(self, path: Path):
+        """Remember a recently opened file and refresh the Recent Files menu."""
+        path = Path(path).resolve()
+        self.recent_files = [p for p in self.recent_files if p != path]
+        self.recent_files.insert(0, path)
+        self.recent_files = self.recent_files[:5]
+        self._rebuild_recent_menu()
+
+    def _rebuild_recent_menu(self):
+        self.recent_menu.delete(0, tk.END)
+        if not self.recent_files:
+            self.recent_menu.add_command(label="(none)", state=tk.DISABLED)
+            return
+        for path in self.recent_files:
+            self.recent_menu.add_command(
+                label=str(path),
+                command=lambda p=path: self._open_recent_file(p),
+            )
+
+    def _open_recent_file(self, path: Path):
+        """Open a file from the Recent Files menu."""
+        if not path.exists():
+            messagebox.showerror("Error", f"File not found: {path}")
+            self.recent_files = [p for p in self.recent_files if p != path]
+            self._rebuild_recent_menu()
+            return
+        loaded_gpx_map = self.geo_file_manager.load_files_with_origins([path])
+        if not loaded_gpx_map:
+            self.logger.warning(f"No GPX data could be loaded from {path}.")
+            return
+        for p, loaded_file in loaded_gpx_map.items():
+            if p not in self.gpx_input:
+                self.gpx_input[p] = loaded_file.gpx
+                cache_key = ("input", p)
+                self._file_origins[cache_key] = loaded_file.origin
+                self._file_labels[cache_key] = loaded_file.origin.display_name
+        self._rebuild_artifact_tree()
+        self._select_all_input_files()
+        self._add_recent_file(path)
 
     def _run_processing(self, mode: str):
         """Run the selected processing mode in a separate thread."""
