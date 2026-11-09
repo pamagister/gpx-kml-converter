@@ -189,7 +189,7 @@ Acceptance criteria:
 Acceptance criteria:
 - `docs/usage/gui.md` oder `docs/index.md` enthält einen Troubleshooting-Block.
 
-### Phase 6: Transfer UI and documentation to English [-]
+### Phase 6: Transfer UI and documentation to English [x]
 
 All user-visible text (GUI labels, dialogs, tooltips, status messages), code
 comments, and documentation are transferred to English. New GUI work from Phase
@@ -212,9 +212,10 @@ Acceptance criteria:
 Acceptance criteria:
 - Comments in `src/gpx_kml_converter/gui/` are in English.
 
-#### 6.3 Documentation to English [ ]
+#### 6.3 Documentation to English [x]
 - `docs/usage/gui.md`, `docs/index.md`, and `README.md` are reviewed and
-  translated to English where they contain German.
+  translated to English where they contain German. Both docs files were already
+  in English, so no changes were needed.
 
 Acceptance criteria:
 - User-facing documentation is in English.
