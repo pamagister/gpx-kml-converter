@@ -117,9 +117,9 @@ Acceptance criteria:
 - Entfernte Artefakte oder Dateien können einmalig wiederhergestellt werden.
 - Originaldatei auf Disk wird nie verändert.
 
-### Phase 3: Visuelles Design und Informationsarchitektur [ ]
+### Phase 3: Visuelles Design und Informationsarchitektur [x]
 
-#### 3.1 Layout-Anpassung [ ]
+#### 3.1 Layout-Anpassung [x]
 - Workspace-Bereich prominenter gestalten (größeres Gewicht).
 - Karte bleibt dauerhaft sichtbar (nicht einklappbar/ausblendbar), Paned-Window-Gewichte zugunsten des Workspaces überdenken.
 
@@ -127,7 +127,7 @@ Acceptance criteria:
 - Workspace nimmt im Standardlayout mehr Raum ein als die Karte.
 - Karte ist dauerhaft sichtbar und Teil des Standardlayouts.
 
-#### 3.2 Icons und konsistentes Button-Styling [ ]
+#### 3.2 Icons und konsistentes Button-Styling [x]
 - Drei Verarbeitungs-Buttons mit Icons und einheitlichem Styling versehen.
 - Modus-Namen präzisieren: "Process Files" → "Compress Files", "Merge Files", "Extract POIs from Tracks".
 - Tooltips für alle Buttons und Menüeinträge.
@@ -136,14 +136,14 @@ Acceptance criteria:
 - Jeder Verarbeitungs-Button hat ein zugehöriges Icon und ein aussagekräftiges Label ("Compress Files", "Merge Files", "Extract POIs from Tracks").
 - Tooltips erscheinen beim Hovern über Buttons und Menüeinträgen.
 
-#### 3.3 Leer-Zustände und Onboarding [ ]
+#### 3.3 Leer-Zustände und Onboarding [x]
 - Beim Start ohne Dateien: einladender Leer-Zustand mit Call-to-Action ("Erste Datei öffnen").
 - Kurze Hinweise im Leer-Zustand, keine generische Meldung nur.
 
 Acceptance criteria:
 - Der Erststart zeigt einen klaren Einstiegspunkt ohne Notwendigkeit, die Dokumentation zu lesen.
 
-#### 3.4 About-Dialog korrigieren [ ]
+#### 3.4 About-Dialog korrigieren [x]
 - Echte Version aus `src/gpx_kml_converter/_version.py` auslesen.
 - Projekt-Name und Autor korrekt setzen (keine Platzhalter wie "Your Name/Organization").
 
@@ -272,8 +272,17 @@ Phase 2 (Selection Safety and Workflow) completed (workpackage 2.3 dropped per u
 - [~] 2.3 Drag & Drop: deferred/dropped — user wants to stay on current tkinter, no new dependency.
 - [x] 2.4 One-level Undo for workspace removal (Commit 20ad7f1)
 
-Phase 3–5 not started yet. New Phase 6 (UI and documentation to English) added after Phase 5.
+Phase 3 (Visual Design and Information Architecture) completed, committed, CI green:
+- 3.1 Layout: workspace now takes more space than the map (weights 3/2/2); map permanently visible.
+- 3.2 Icons + consistent button styling on the three processing buttons.
+- 3.3 Empty-state onboarding hint ("Workspace is empty — click 'Open Files' ...").
+- 3.4 About dialog shows real version from _version.py and author "pamagister".
 
-All 61 tests (`uv run pytest`) and Ruff lint/format run green. CI (GitHub Actions: ubuntu, macOS, Windows + linter) is green for the last push (20ad7f1).
+Phase 6 (UI and documentation to English) completed: all GUI labels, dialogs, tooltips, and code
+comments in English; docs already in English.
 
-Next work package: Phase 6.1 (translate GUI labels and dialogs to English), then Phase 3–5 using English labels from the start.
+Phase 4 (Data Preview and Control) and Phase 5 (Documentation) not started yet.
+
+All 61 tests (`uv run pytest`) and Ruff lint/format run green. CI is green for the last push.
+
+Next work package: Phase 4.1 (preview before processing) or Phase 5 (documentation).

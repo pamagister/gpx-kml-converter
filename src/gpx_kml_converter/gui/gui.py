@@ -25,6 +25,7 @@ from config_cli_gui.persistence import read_last_used_config
 from gpxpy.gpx import GPX
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 
+from gpx_kml_converter._version import __version__
 from gpx_kml_converter.application.processing import process_gpx_files
 from gpx_kml_converter.config.config import ConfigParameterManager
 from gpx_kml_converter.core.file_loader import FileOrigin, GeoFileManager
@@ -272,9 +273,10 @@ class MainGui:
         workspace_frame = ttk.LabelFrame(main_horizontal_paned, text="Workspace")
         center_vertical_paned = ttk.PanedWindow(main_horizontal_paned, orient=tk.VERTICAL)
         map_frame = ttk.LabelFrame(main_horizontal_paned, text="Map")
-        main_horizontal_paned.add(workspace_frame, weight=2)
+        # Workspace takes more space than the map; the map stays permanently visible.
+        main_horizontal_paned.add(workspace_frame, weight=3)
         main_horizontal_paned.add(center_vertical_paned, weight=2)
-        main_horizontal_paned.add(map_frame, weight=5)
+        main_horizontal_paned.add(map_frame, weight=2)
 
         metadata_frame = ttk.LabelFrame(center_vertical_paned, text="Inspector")
         profile_plot_frame = ttk.LabelFrame(center_vertical_paned, text="Elevation Profile")
@@ -347,13 +349,23 @@ class MainGui:
         self._build_processing_controls(parent_frame)
 
     def _build_processing_controls(self, parent_frame):
-        """Build processing actions below the artifact tree."""
+        """Build processing actions below the artifact tree.
+
+        Each processing button carries an icon for quick visual recognition and
+        a consistent style across the three modes.
+        """
+        mode_icons = {
+            "compress": "🗜️",
+            "merge": "🔗",
+            "extract-pois": "📍",
+        }
 
         self.run_buttons = {}
         for mode, label in self.processing_modes:
+            icon = mode_icons.get(mode, "")
             button = ttk.Button(
                 parent_frame,
-                text=label,
+                text=f"{icon} {label}".strip(),
                 command=partial(self._run_processing, mode=mode),
             )
             button.pack(pady=1, padx=4, fill=tk.X)
@@ -377,6 +389,16 @@ class MainGui:
         )
         self.undo_button.pack(pady=(0, 4), padx=4, fill=tk.X)
         self._update_undo_button_state()
+
+        # Empty-state onboarding hint, shown when no input files are loaded.
+        self.empty_state_var = tk.StringVar(value="")
+        self.empty_state_label = ttk.Label(
+            parent_frame,
+            textvariable=self.empty_state_var,
+            anchor=tk.W,
+            foreground="#555555",
+        )
+        self.empty_state_label.pack(fill=tk.X, padx=4, pady=(4, 0))
 
         self.progress = ttk.Progressbar(parent_frame, mode="determinate")
         self.progress.configure(maximum=100, value=0)
@@ -852,6 +874,7 @@ class MainGui:
                         )
 
         self._update_batch_status()
+        self._update_empty_state()
 
     def _insert_artifact(self, parent: str, identity: ArtifactIdentity, label: str) -> str:
         item_id = self._new_tree_item_id()
@@ -1136,6 +1159,15 @@ class MainGui:
             self.batch_status_var.set(
                 f"Batch: all {total_count} input files (no input files selected)"
             )
+
+    def _update_empty_state(self):
+        """Show an onboarding hint when the workspace has no input files."""
+        if not self.gpx_input:
+            self.empty_state_var.set(
+                "Workspace is empty — click 'Open Files' to load your first GPX/KML/ZIP file."
+            )
+        else:
+            self.empty_state_var.set("")
 
     def _on_browser_selection(self, _event=None):
         self._update_batch_status()
@@ -1459,11 +1491,10 @@ class MainGui:
 
     def _show_about(self):
         """Display about information."""
-        __version__ = "0.1.0"  # Assuming a version number, replace if dynamic
         about_message = (
             f"gpx-kml-converter GUI Application\n"
             f"Version: {__version__}\n"
-            f"Developed by: Your Name/Organization\n"
+            f"Developed by: pamagister\n"
             f"Description: A tool to process and visualize GPX/KML files."
         )
         messagebox.showinfo("About gpx-kml-converter", about_message)
