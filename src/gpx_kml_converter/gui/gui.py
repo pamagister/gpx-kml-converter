@@ -1388,6 +1388,25 @@ class MainGui:
         self._select_all_input_files()
         self._add_recent_file(path)
 
+    def _confirm_processing_preview(
+        self, file_count: int, total_points: int, mode_label: str
+    ) -> bool:
+        """Show a processing preview and require explicit confirmation.
+
+        Displays the number of files and total points to be processed and asks
+        the user to confirm. Returns True if the user confirms, False to abort.
+        """
+        confirm_message = (
+            f"Process {file_count} file(s) with {total_points} total point(s) "
+            f"using '{mode_label}'?\n\n"
+            f"Confirm to start processing, or cancel to abort."
+        )
+        return messagebox.askyesno(
+            "Confirm processing",
+            confirm_message,
+            icon=messagebox.QUESTION,
+        )
+
     def _run_processing(self, mode: str):
         """Run the selected processing mode in a separate thread."""
         selected_paths = self._selected_input_paths()
@@ -1416,8 +1435,20 @@ class MainGui:
             selected_paths = list(self.gpx_input)
 
         selected_gpx_objects = [self.gpx_input[path] for path in selected_paths]
-
         total = len(selected_paths)
+
+        # Preview before processing: show file/point counts and require
+        # explicit confirmation before starting. When nothing was individually
+        # selected, the "process all files?" confirmation above already covers
+        # this, so skip the duplicate here.
+        if selected_input_paths:
+            total_points = sum(
+                summarize_gpx(self.gpx_input[path]).artifact_count for path in selected_paths
+            )
+            if not self._confirm_processing_preview(total, total_points, mode_label):
+                self.progress.configure(value=0)
+                self.current_file_var.set("Ready")
+                return
         self.progress.configure(value=0)
         if total == 1:
             self.current_file_var.set(f"Processing {selected_paths[0].name}")

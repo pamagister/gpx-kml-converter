@@ -585,5 +585,101 @@ class TestRecentFiles(unittest.TestCase):
         self.assertNotIn(missing, self.gui.recent_files)
 
 
+class TestProcessingPreview(unittest.TestCase):
+    def _make_gui(self, selected_item):
+        gui = MainGui.__new__(MainGui)
+        gpx = GPX()
+        gpx.waypoints.append(GPXWaypoint(latitude=50.0, longitude=10.0, name="WP"))
+        path = Path("a.gpx")
+        gui.gpx_input = {path: gpx}
+        gui.gpx_output = {}
+        gui._file_summaries = {}
+        gui._file_origins = {}
+        gui._file_labels = {}
+        gui._virtual_files = set()
+        gui.logger = logging.getLogger(__name__)
+        gui.root = type("R", (), {"after": lambda self, *a, **k: None})()
+        gui.config_manager = _FakeConfigManager()
+        gui.progress = _FakeProgress()
+        gui.current_file_var = _FakeVariable()
+        gui.artifact_tree = SelectedItems(selected_item)
+        gui._tree_identity = {selected_item: ArtifactIdentity("input", path, "file")}
+        gui._tree_group_identity = {}
+        gui.run_buttons = {}
+        gui.clear_files_button = type("B", (), {"config": lambda self, **kw: None})()
+        return gui, path
+
+    def test_processing_with_selection_cancel_preview_aborts(self):
+        gui, path = self._make_gui("file_a")
+        calls = []
+
+        def askyesno(title, message, **kwargs):
+            calls.append(message)
+            return False
+
+        processed = []
+
+        def fake_process(
+            input_files, *, mode, output, tolerance, date_format, elevation, logger, source_origins
+        ):
+            processed.append(list(input_files))
+            return {}
+
+        import gpx_kml_converter.gui.gui as gui_module
+
+        orig_process = gui_module.process_gpx_files
+        gui_module.process_gpx_files = fake_process
+        messagebox_askyesno = messagebox.askyesno
+        try:
+            messagebox.askyesno = askyesno
+            gui._run_processing("compress")
+        finally:
+            gui_module.process_gpx_files = orig_process
+            messagebox.askyesno = messagebox_askyesno
+
+        # Preview confirmation shown; cancelling aborts processing.
+        self.assertEqual(len(calls), 1)
+        self.assertIn("Process 1 file(s)", calls[0])
+        self.assertIn("total point(s)", calls[0])
+        self.assertEqual(processed, [])
+
+    def test_processing_with_selection_confirm_preview_starts(self):
+        gui, path = self._make_gui("file_a")
+        calls = []
+
+        def askyesno(title, message, **kwargs):
+            calls.append(message)
+            return True
+
+        processed = []
+
+        def fake_process(
+            input_files, *, mode, output, tolerance, date_format, elevation, logger, source_origins
+        ):
+            processed.append(list(input_files))
+            return {}
+
+        import gpx_kml_converter.gui.gui as gui_module
+
+        orig_process = gui_module.process_gpx_files
+        gui_module.process_gpx_files = fake_process
+        messagebox_askyesno = messagebox.askyesno
+        try:
+            messagebox.askyesno = askyesno
+            gui._run_processing("compress")
+        finally:
+            gui_module.process_gpx_files = orig_process
+            messagebox.askyesno = messagebox_askyesno
+
+        self.assertEqual(len(calls), 1)
+        self.assertIn("Process 1 file(s)", calls[0])
+        # Wait for the background thread to start processing.
+        deadline = time.time() + 5
+        while not processed and time.time() < deadline:
+            time.sleep(0.05)
+        self.assertEqual(len(processed), 1)
+        self.assertEqual(len(processed[0]), 1)
+
+
 if __name__ == "__main__":
     unittest.main()
