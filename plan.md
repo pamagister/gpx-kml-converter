@@ -277,10 +277,18 @@ Phase 4 (Data Preview and Control) completed, committed, CI green:
 - 4.1 Preview before processing with confirmation + point counts (Commit 00ea997)
 - 4.2 Output location dialog per operation (Commit 5f41910)
 
-Phase 5 (Documentation) in progress:
-- [-] 5.1 README / docs/index.md GUI first steps
-- [ ] 5.2 Troubleshooting section
+Phase 5 (Documentation) completed, committed, CI green:
+- 5.1 GUI first-steps section in docs/usage/gui.md and docs/index.md (README.md regenerated).
+- 5.2 Troubleshooting block in docs/usage/gui.md.
 
-All 69 tests (`uv run pytest`) and Ruff lint/format run green. CI is green for the last push.
+All phases (1–6) are complete:
+- Phase 1 Process-Feedback and Logging: docked log panel, deterministic progress, completion summary.
+- Phase 2 Selection Safety and Workflow: Clear Workspace confirmation, process-all warning, undo (2.3 Drag & Drop dropped per user decision to stay on tkinter).
+- Phase 3 Visual Design: layout weights (workspace > map), button icons, empty-state onboarding, About dialog with real version.
+- Phase 4 Data Preview and Control: processing preview with confirmation, per-run output folder, recently opened files.
+- Phase 5 Documentation: GUI first steps + troubleshooting.
+- Phase 6 English translation: GUI labels, dialogs, tooltips, and comments in English.
 
-Next work package: Phase 5.1 (GUI first-steps documentation).
+All 69 tests (`uv run pytest`) and Ruff lint/format run green. CI (GitHub Actions: ubuntu, macOS, Windows + linter) is green for the last push (4faab49).
+
+No further work packages remain. Ready for review.
