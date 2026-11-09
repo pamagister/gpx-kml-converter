@@ -299,7 +299,7 @@ class TestGuiWorkflow(unittest.TestCase):
 
             gui._show_processing_summary(3, "Compress Files", output_map)
 
-            self.assertIn("3 Datei(en)", gui.summary_var.get())
+            self.assertIn("3 file(s)", gui.summary_var.get())
             self.assertIn("Compress Files", gui.summary_var.get())
             self.assertEqual(gui._last_output_dir, output_dir)
             self.assertEqual(gui.summary_path_var.get(), str(output_dir))
@@ -333,8 +333,8 @@ class TestGuiWorkflow(unittest.TestCase):
         gui._show_processing_error(ValueError("boom"), "Compress Files", 2)
 
         self.assertEqual(gui.progress.value, 0)
-        self.assertIn("Fehler", gui.current_file_var.get())
-        self.assertIn("Verarbeitung fehlgeschlagen", gui.summary_var.get())
+        self.assertIn("Error", gui.current_file_var.get())
+        self.assertIn("Processing failed", gui.summary_var.get())
 
     def test_clear_workspace_requires_confirmation(self):
         gui = MainGui.__new__(MainGui)
@@ -361,7 +361,7 @@ class TestGuiWorkflow(unittest.TestCase):
         finally:
             messagebox.askyesno = messagebox_askyesno
 
-        # Abbruch lässt den Workspace unverändert
+        # Cancellation leaves the workspace unchanged
         self.assertIn(Path("a.gpx"), gui.gpx_input)
         self.assertIn(Path("b.gpx"), gui.gpx_output)
         self.assertEqual(cleared, [True])
@@ -416,7 +416,7 @@ class TestGuiWorkflow(unittest.TestCase):
         self.assertNotIn(path_a, gui.gpx_input)
         self.assertIn(path_b, gui.gpx_input)
 
-        # Undo stellt den Zustand vor der Entfernung wieder her.
+        # Undo restores the state before the removal.
         gui._undo_last_removal()
 
         self.assertIn(path_a, gui.gpx_input)
@@ -466,10 +466,10 @@ class TestGuiWorkflow(unittest.TestCase):
             gui_module.process_gpx_files = orig_process
             messagebox.askyesno = messagebox_askyesno
 
-        # Der Bestätigungsdialog wird angezeigt; Abbruch verhindert die Verarbeitung.
+        # The confirmation dialog is shown; cancellation aborts processing.
         self.assertEqual(len(calls), 1)
-        self.assertIn("keine ist selektiert", calls[0])
-        self.assertIn("verarbeitet werden?", calls[0])
+        self.assertIn("none is selected", calls[0])
+        self.assertIn("really be processed", calls[0])
         self.assertEqual(processed, [])
 
     def test_processing_without_selection_confirmed_processes_all(self):
@@ -516,13 +516,13 @@ class TestGuiWorkflow(unittest.TestCase):
             gui_module.process_gpx_files = orig_process
             messagebox.askyesno = messagebox_askyesno
 
-        # Warten, bis der Verarbeitungs-Thread abgeschlossen ist.
+        # Wait for the processing thread to complete.
         deadline = time.time() + 5
         while not processed and time.time() < deadline:
             time.sleep(0.05)
 
         self.assertEqual(len(calls), 1)
-        self.assertIn("keine ist selektiert", calls[0])
+        self.assertIn("none is selected", calls[0])
         self.assertEqual(len(processed), 1)
         self.assertEqual(len(processed[0]), 2)
 

@@ -175,7 +175,7 @@ class MainGui:
     """Main GUI application class."""
 
     processing_modes = [
-        ("compress", "Process Files"),
+        ("compress", "Compress Files"),
         ("merge", "Merge Files"),
         ("extract-pois", "Extract POIs from Tracks"),
     ]
@@ -210,7 +210,7 @@ class MainGui:
         self._active_identity: ArtifactIdentity | None = None
         self._active_profile_identity: ArtifactIdentity | None = None
         self.batch_status_var = tk.StringVar(master=self.root)
-        # Einmaliger Undo-Snapshot für die letzte Arbeitsplatz-Entfernung.
+        # One-level undo snapshot for the last workspace removal.
         self._undo_snapshot: dict | None = None
 
         # Initialize GeoFileManager
@@ -368,12 +368,12 @@ class MainGui:
 
         self.undo_button = ttk.Button(
             parent_frame,
-            text="Letzte Entfernung rückgängig",
+            text="Undo last removal",
             command=self._undo_last_removal,
         )
         ToolTip(
             self.undo_button,
-            "Stellt den Zustand vor der letzten Arbeitsplatz-Entfernung wieder her",
+            "Restores the state before the last workspace removal",
         )
         self.undo_button.pack(pady=(0, 4), padx=4, fill=tk.X)
         self._update_undo_button_state()
@@ -382,7 +382,7 @@ class MainGui:
         self.progress.configure(maximum=100, value=0)
         self.progress.pack(pady=(0, 4), padx=4, fill=tk.X)
 
-        self.current_file_var = tk.StringVar(value="Bereit")
+        self.current_file_var = tk.StringVar(value="Ready")
         self.current_file_label = ttk.Label(
             parent_frame, textvariable=self.current_file_var, anchor=tk.W
         )
@@ -390,25 +390,25 @@ class MainGui:
 
     def _build_metadata_display(self, parent_frame):
         """Build the metadata display with scrollbars."""
-        # Frame für Text widget mit beiden Scrollbars
+        # Frame for text widget with both scrollbars
         metadata_text_frame = ttk.Frame(parent_frame)
         metadata_text_frame.pack(fill=tk.BOTH, expand=True, padx=0, pady=0)
 
         self.metadata_text = tk.Text(metadata_text_frame, state=tk.DISABLED)
 
-        # Vertikale Scrollbar
+        # Vertical scrollbar
         metadata_v_scrollbar = ttk.Scrollbar(
             metadata_text_frame, orient="vertical", command=self.metadata_text.yview
         )
         self.metadata_text.configure(yscrollcommand=metadata_v_scrollbar.set)
 
-        # Horizontale Scrollbar
+        # Horizontal scrollbar
         metadata_h_scrollbar = ttk.Scrollbar(
             metadata_text_frame, orient="horizontal", command=self.metadata_text.xview
         )
         self.metadata_text.configure(xscrollcommand=metadata_h_scrollbar.set)
 
-        # Grid layout für Text widget und Scrollbars
+        # Grid layout for text widget and scrollbars
         self.metadata_text.grid(row=0, column=0, sticky="nsew")
         metadata_v_scrollbar.grid(row=0, column=1, sticky="ns")
         metadata_h_scrollbar.grid(row=1, column=0, sticky="ew")
@@ -423,7 +423,7 @@ class MainGui:
         parent_frame.grid_columnconfigure(0, weight=1)
 
         # Setup Matplotlib figure and canvas
-        self.fig, self.ax = plt.subplots(figsize=(8, 4))  # Kleinere initiale Höhe
+        self.fig, self.ax = plt.subplots(figsize=(8, 4))  # Smaller initial height
         self.fig.set_facecolor("#EEEEEE")  # Light grey background for the figure
         self.canvas = FigureCanvasTkAgg(self.fig, master=parent_frame)
         self.canvas_widget = self.canvas.get_tk_widget()
@@ -442,7 +442,7 @@ class MainGui:
         parent_frame.grid_columnconfigure(0, weight=1)
 
         # Setup Matplotlib figure and canvas
-        self.fig1, self.ax1 = plt.subplots(figsize=(8, 4))  # Kleinere initiale Höhe
+        self.fig1, self.ax1 = plt.subplots(figsize=(8, 4))  # Smaller initial height
         self.fig1.set_facecolor("#EEEEEE")  # Light grey background for the figure
         self.canvas1 = FigureCanvasTkAgg(self.fig1, master=parent_frame)
         self.canvas_widget1 = self.canvas1.get_tk_widget()
@@ -536,7 +536,7 @@ class MainGui:
 
     def _show_processing_summary(self, count: int, mode_label: str, output_map: dict[Path, GPX]):
         """Display the completion summary and remember the output directory."""
-        self.summary_var.set(f"Verarbeitung abgeschlossen: {count} Datei(en) ({mode_label})")
+        self.summary_var.set(f"Processing complete: {count} file(s) processed ({mode_label})")
 
         output_dirs = {path.parent for path in output_map}
         output_dir = next(iter(output_dirs)) if len(output_dirs) == 1 else None
@@ -592,27 +592,27 @@ class MainGui:
         log_frame.grid_columnconfigure(0, weight=1)  # Text widget
         log_frame.grid_rowconfigure(1, weight=0)  # Controls
 
-        # Frame für Log Text widget mit beiden Scrollbars
+        # Frame for log text widget with both scrollbars
         log_text_frame = ttk.Frame(log_frame)
         log_text_frame.grid(row=0, column=0, sticky="nsew", padx=0, pady=0)
         log_text_frame.grid_rowconfigure(0, weight=1)
         log_text_frame.grid_columnconfigure(0, weight=1)
 
-        self.log_window_text = tk.Text(log_text_frame, height=15)  # Höher, kein Wrap
+        self.log_window_text = tk.Text(log_text_frame, height=15)  # Higher, no wrap
 
-        # Vertikale Scrollbar
+        # Vertical scrollbar
         log_v_scrollbar = ttk.Scrollbar(
             log_text_frame, orient="vertical", command=self.log_window_text.yview
         )
         self.log_window_text.configure(yscrollcommand=log_v_scrollbar.set)
 
-        # Horizontale Scrollbar
+        # Horizontal scrollbar
         log_h_scrollbar = ttk.Scrollbar(
             log_text_frame, orient="horizontal", command=self.log_window_text.xview
         )
         self.log_window_text.configure(xscrollcommand=log_h_scrollbar.set)
 
-        # Grid layout für Log Text widget und Scrollbars
+        # Grid layout for log text widget and scrollbars
         self.log_window_text.grid(row=0, column=0, sticky="nsew")
         log_v_scrollbar.grid(row=0, column=1, sticky="ns")
         log_h_scrollbar.grid(row=1, column=0, sticky="ew")
@@ -707,14 +707,14 @@ class MainGui:
     def _clear_files(self):
         """Clear all files from the workspace after explicit user confirmation."""
         if not messagebox.askyesno(
-            "Workspace leeren",
-            "Sollen wirklich alle Dateien aus dem Workspace entfernt werden?\n\n"
-            "Die Originaldateien auf der Festplatte bleiben unverändert.",
+            "Clear Workspace",
+            "Should all files really be removed from the workspace?\n\n"
+            "The original files on disk remain unchanged.",
             icon=messagebox.QUESTION,
         ):
             return
 
-        # Ein früherer Undo-Zustand ist nach einem expliziten Leeren nicht mehr gültig.
+        # A previous undo state is no longer valid after an explicit clear.
         self._undo_snapshot = None
         self._update_undo_button_state()
 
@@ -972,11 +972,10 @@ class MainGui:
             )
 
     def _capture_undo_snapshot(self):
-        """Speichern eines Zustands-Snapshots vor einer Arbeitsplatz-Änderung.
+        """Save a state snapshot before a workspace change.
 
-        Die GPX-Objekte werden tief kopiert, da Artefakt-Entfernungen sie
-        direkt im Speicher mutieren. Originaldateien auf Disk werden nie
-        angefasst.
+        The GPX objects are deep-copied because artifact removals mutate them
+        in memory. Original files on disk are never touched.
         """
         from copy import deepcopy
 
@@ -990,17 +989,17 @@ class MainGui:
         }
 
     def _update_undo_button_state(self):
-        """Aktiviert den Undo-Button nur, wenn ein Wiederherstellungs-Zustand vorliegt."""
+        """Enables the Undo button only when a restorable state exists."""
         try:
             self.undo_button.config(
                 state=tk.NORMAL if self._undo_snapshot is not None else tk.DISABLED
             )
         except (AttributeError, tk.TclError):
-            # Button existiert noch nicht oder Widget wurde zerstört.
+            # Button does not exist yet or widget was destroyed.
             pass
 
     def _undo_last_removal(self):
-        """Stellt den Arbeitsplatz-Zustand vor der letzten Entfernung wieder her."""
+        """Restores the workspace state before the last removal."""
         if self._undo_snapshot is None:
             return
         snapshot = self._undo_snapshot
@@ -1014,7 +1013,7 @@ class MainGui:
         self._rebuild_artifact_tree()
         self._show_empty_inspector()
         self._update_undo_button_state()
-        self.logger.info("Letzte Arbeitsplatz-Entfernung rückgängig gemacht")
+        self.logger.info("Last workspace removal undone")
 
     def _delete_selected_workspace_items(self, _event=None):
         """Remove selected files from the workspace or delete selected artifacts in place.
@@ -1024,8 +1023,8 @@ class MainGui:
         disk is never modified and no generated working copy is created. Mixed selections
         across files and artifact types are supported.
         """
-        # Zustand vor der Änderung sichern, damit sie einmalig rückgängig gemacht
-        # werden kann. Originaldateien auf Disk bleiben unverändert.
+        # Save the state before the change so it can be undone once.
+        # Original files on disk remain unchanged.
         self._capture_undo_snapshot()
 
         selected_file_identities: list[ArtifactIdentity] = []
@@ -1320,16 +1319,16 @@ class MainGui:
         selected_input_paths = self._selected_tree_file_paths("input")
         mode_label = dict(self.processing_modes).get(mode, mode)
 
-        # Wenn keine Datei einzeln selektiert ist, werden alle geladenen
-        # Eingabedateien verarbeitet. Das erfordert eine explizite Bestätigung.
+        # If no file is individually selected, all loaded input files are
+        # processed. This requires explicit confirmation.
         if total_inputs and not selected_input_paths:
             confirm_message = (
-                f"Es sind {total_inputs} Datei(en) geladen, aber keine ist "
-                f"selektiert.\n\nSollen wirklich alle {total_inputs} Datei(en) "
-                f"mit '{mode_label}' verarbeitet werden?"
+                f"There are {total_inputs} file(s) loaded, but none is "
+                f"selected.\n\nShould all {total_inputs} file(s) really be "
+                f"processed with '{mode_label}'?"
             )
             if not messagebox.askyesno(
-                "Alle Dateien verarbeiten?",
+                "Process all files?",
                 confirm_message,
                 icon=messagebox.QUESTION,
             ):
@@ -1341,9 +1340,9 @@ class MainGui:
         total = len(selected_paths)
         self.progress.configure(value=0)
         if total == 1:
-            self.current_file_var.set(f"Verarbeite {selected_paths[0].name}")
+            self.current_file_var.set(f"Processing {selected_paths[0].name}")
         else:
-            self.current_file_var.set(f"Verarbeite {total} Dateien ({mode_label})")
+            self.current_file_var.set(f"Processing {total} files ({mode_label})")
 
         for button in self.run_buttons.values():
             button.config(state=tk.DISABLED)
@@ -1395,7 +1394,7 @@ class MainGui:
 
         # Deterministic progress: processing finished successfully.
         self.progress.configure(value=100)
-        self.current_file_var.set(f"{total} Datei(en) verarbeitet ({mode_label})")
+        self.current_file_var.set(f"{total} file(s) processed ({mode_label})")
 
         # Completion summary with clickable output path.
         self._show_processing_summary(len(processed_gpx_map), mode_label, processed_gpx_map)
@@ -1423,8 +1422,8 @@ class MainGui:
         main window without a blocking dialog.
         """
         self.progress.configure(value=0)
-        self.current_file_var.set(f"Fehler bei {mode_label} ({total} Datei(en))")
-        self.summary_var.set(f"Verarbeitung fehlgeschlagen ({mode_label}): {err}")
+        self.current_file_var.set(f"Error during {mode_label} ({total} file(s))")
+        self.summary_var.set(f"Processing failed ({mode_label}): {err}")
         self.summary_path_var.set("")
         self.logger.error(f"Processing failed: {err}")
 

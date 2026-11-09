@@ -189,13 +189,13 @@ Acceptance criteria:
 Acceptance criteria:
 - `docs/usage/gui.md` oder `docs/index.md` enthält einen Troubleshooting-Block.
 
-### Phase 6: UI und Dokumentation auf Englisch übertragen [ ]
+### Phase 6: Transfer UI and documentation to English [-]
 
 All user-visible text (GUI labels, dialogs, tooltips, status messages), code
 comments, and documentation are transferred to English. New GUI work from Phase
 3–5 onwards uses English labels from the start.
 
-#### 6.1 GUI labels and dialogs auf Englisch [ ]
+#### 6.1 GUI labels and dialogs to English [x]
 - Button labels, menu entries, tooltips, status and summary labels, and dialog
   texts are translated from German to English (e.g. "Verarbeite …" →
   "Processing …", "Workspace leeren" → "Clear Workspace").
@@ -205,14 +205,14 @@ Acceptance criteria:
 - No German user-visible strings remain in `src/gpx_kml_converter/gui/`.
 - Tooltips and dialogs are in English.
 
-#### 6.2 Code comments auf Englisch [ ]
+#### 6.2 Code comments to English [x]
 - Comments added in Phases 1–2 are translated to English.
 - New comments are written in English.
 
 Acceptance criteria:
 - Comments in `src/gpx_kml_converter/gui/` are in English.
 
-#### 6.3 Dokumentation auf Englisch [ ]
+#### 6.3 Documentation to English [ ]
 - `docs/usage/gui.md`, `docs/index.md`, and `README.md` are reviewed and
   translated to English where they contain German.
 
