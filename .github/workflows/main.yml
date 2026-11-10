@@ -1,83 +1,98 @@
-# This is a basic workflow to help you get started with Actions
-
 name: CI
 
-# Controls when the workflow will run
+# Linux is the always-on quality gate. Cross-platform tests are opt-in to keep
+# normal feedback fast and runner usage predictable.
+#
+# Opt in by:
+#   - adding --all to the commit subject or pull request title
+#   - running this workflow manually with all=true
+#
+# A feature branch under ci/** also runs on push, which makes it possible to
+# validate CI changes before opening a pull request.
+
 on:
-  # Triggers the workflow on push or pull request events but only for the main branch
   push:
-    branches: [ main ]
+    branches:
+      - main
+      - 'ci/**'
+    paths-ignore:
+      - 'HISTORY.md'
   pull_request:
     branches: [ main ]
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
+    inputs:
+      all:
+        description: 'Also test Windows and macOS'
+        required: false
+        type: boolean
+        default: false
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  # Superseded runs for the same ref are cancelled, so the latest commit
+  # gets its result sooner and no CI minutes are wasted on stale pushes.
+  cancel-in-progress: true
 
 jobs:
-  linter:
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: [ 3.11 ]
-        os: [ubuntu-latest]
-    runs-on: ${{ matrix.os }}
+  # Detects the `--all` opt-in once per run. It runs in parallel with `tests`
+  # and publishes the result as a job output for the optional platform jobs.
+  flags:
+    runs-on: ubuntu-latest
+    outputs:
+      build_all: ${{ steps.detect.outputs.build_all }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
         with:
-          python-version: ${{ matrix.python-version }}
+          fetch-depth: 0
+      - id: detect
+        shell: bash
+        env:
+          INPUT_ALL: ${{ inputs.all }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          COMMIT_SUBJECT="$(git log -1 --format=%s)"
+          if [[ "$COMMIT_SUBJECT" == *"--all"* || "$PR_TITLE" == *"--all"* || "$INPUT_ALL" == "true" ]]; then
+            echo "build_all=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "build_all=false" >> "$GITHUB_OUTPUT"
+          fi
 
-      - name: Setup Environment # Composite Action
+  tests:
+    name: Linux / lint + tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - name: Setup Environment
         uses: ./.github/actions/setup-environment
         with:
-          python-version: ${{ matrix.python-version }}
-
-      - name: Run linter
-        run: make lint
-
-  tests_win:
-    needs: linter
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: [ 3.11 ]
-        os: [windows-latest]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python-version }}
-
-      - name: Setup Environment # Composite Action
-        uses: ./.github/actions/setup-environment
-        with:
-          python-version: ${{ matrix.python-version }}
-
-      - name: run tests
-        run: uv run pytest -s -vvvv -l --tb=long tests
-
-  tests_linux_macos:
-    needs: tests_win
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: [ 3.11 ]
-        os: [ ubuntu-latest, macos-latest ]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python-version }}
-
-      - name: Setup Environment # Composite Action
-        uses: ./.github/actions/setup-environment
-        with:
-          python-version: ${{ matrix.python-version }}
-
-      - name: Run tests
+          python-version: '3.11'
+      - name: Run linter and tests
         run: make test
 
-      - name: "Upload coverage to Codecov"
-        uses: codecov/codecov-action@v5
+  tests-cross-platform:
+    name: Tests / ${{ matrix.os }}
+    needs: [flags, tests]
+    if: needs.flags.outputs.build_all == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - name: Setup Environment
+        uses: ./.github/actions/setup-environment
+        with:
+          python-version: '3.11'
+      - name: Run tests
+        run: uv run pytest -s -vvvv -l --tb=long tests
