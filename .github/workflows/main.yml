@@ -60,6 +60,7 @@ jobs:
           fi
 
   tests:
+    # Required check for every push and pull request; optional platforms are advisory.
     name: Linux / lint + tests
     runs-on: ubuntu-latest
     timeout-minutes: 15
