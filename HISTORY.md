@@ -4,6 +4,170 @@ Changelog
 
 (unreleased)
 ------------
+- Ci(gpx-kml-converter): clarify required Linux check in main workflow.
+  [Paul Magister]
+
+  Refs #13
+- Ci(gpx-kml-converter): Linux always-on, Win/macOS opt-in via --all.
+  [Paul Magister]
+
+  - flags job detects --all opt-in from commit subject / PR title / input
+  - Linux test job (make test) always runs
+  - Windows/macOS test jobs only run with build_all=true
+  - Release DAG: quality gate blocks release/PyPI; build-linux always,
+    build-windows/build-macos only opt-in
+  - Separate build-*-yml workflows consolidated into release.yml
+  - setup-environment uses cached setup-uv@v10.3.3
+
+  Refs #13
+- Docs(plan): mark all phases complete. [Paul Magister]
+- Docs(gui): GUI first-steps and troubleshooting documentation (Phase 5)
+  [Paul Magister]
+
+  Add a 'Getting started with the GUI' section to docs/usage/gui.md and
+  docs/index.md (regenerating README.md), plus a Troubleshooting block
+  covering SRTM, KML, empty log, output path, and empty workspace.
+
+  Refs #12
+- Feat(gui): per-run output directory override (Phase 4.2) [Paul
+  Magister]
+
+  Add a 'Choose Output Folder' option so the user can select a custom output
+  directory for the current processing run, overriding the global settings path.
+  When unset, the default settings path is used. Adds tests for the chooser and
+  for passing the custom directory through to processing.
+
+  Refs #12
+- Feat(gui): preview with confirmation before processing (Phase 4.1)
+  [Paul Magister]
+
+  Show a processing preview with file and point counts and require explicit
+  confirmation before starting. When nothing is individually selected, the
+  existing 'process all files?' confirmation covers this. Adds tests for
+  cancel/confirm behavior.
+
+  Refs #12
+- Feat(gui): recently opened files menu (Phase 4.3) [Paul Magister]
+
+  Add a Recent Files submenu to the File menu tracking up to 5 recently opened
+  files. Recent files can be re-opened directly; missing entries are removed.
+  Adds tests for dedup/max-5 handling and missing-file removal.
+
+  Refs #12
+- Feat(gui): visual design and information architecture (Phase 3) [Paul
+  Magister]
+
+  - Layout: workspace takes more space than the map; map permanently visible.
+  - Icons on the three processing buttons for quick visual recognition.
+  - Empty-state onboarding hint when no input files are loaded.
+  - About dialog shows real version from _version.py and author.
+
+  Refs #12
+- Docs(plan): mark Phase 6 (English translation) complete. [Paul
+  Magister]
+- Feat(gui): transfer GUI labels, dialogs, comments to English. [Paul
+  Magister]
+
+  Translate user-visible strings and code comments from German to English. Rename compress mode label to Compress Files per plan decision.
+- Docs(plan): mark Phase 2 complete, drop 2.3, add Phase 6 English
+  translation. [Paul Magister]
+
+  Phase 1 complete; Phase 2 complete with workpackage 2.3 (Drag & Drop)
+  dropped per user decision to stay on tkinter without new dependencies.
+  Add Phase 6 to transfer GUI labels, comments, and documentation to English.
+
+  Refs #11, Refs #12
+- Allways english. [Paul Magister]
+- Docs(plan): Fortschritts-/Handoff-Eintrag nach Phase 1 und Phase 2
+  (teilweise) [Paul Magister]
+
+  Phase 1 abgeschlossen (Logging, Fortschritt, Zusammenfassung). Phase 2
+  teilweise umgesetzt (Clear-Workspace-Bestätigung, Selektions-Warnung,
+  Undo). Drag & Drop (2.3) ist blockiert wegen fehlender
+  tkinterdnd2-Abhängigkeit.
+
+  Refs #11, Refs #12
+- Feat(gui): one-level undo for workspace removal. [Paul Magister]
+
+  Add an Undo button that restores the workspace state before the last file
+  or artifact removal. The state is deep-copied before each removal so the
+  original file on disk is never modified. The button is enabled only when
+  an undoable state exists and is disabled after undoing.
+
+  Refs #12
+- Feat(gui): confirm processing all files when nothing is selected.
+  [Paul Magister]
+
+  When no input file is individually selected, processing would silently
+  use all loaded inputs. Now a confirmation dialog ('Alle X Dateien
+  verarbeiten?') is shown first and can be cancelled. Adds tests covering
+  both the cancel and confirm paths.
+
+  Refs #12
+- Feat(gui): confirm Clear Workspace before clearing. [Paul Magister]
+
+  Clear Workspace now requires explicit user confirmation via a yes/no
+  dialog; cancellation leaves the workspace unchanged. Adds tests covering
+  both the cancel and confirm paths.
+
+  Refs #12
+- Feat(gui): completion summary with clickable output path. [Paul
+  Magister]
+
+  Add a completion summary area below the log panel showing how many files
+  were processed, in which mode, and where the results lie. The output path
+  is a clickable link that opens the containing folder. Processing errors
+  are shown non-blockingly in the main window and log panel. Adds tests for
+  summary and error display.
+
+  Refs #11
+- Feat(gui): deterministic progress bar and current-file label. [Paul
+  Magister]
+
+  Replace the indeterminate progress bar with a determinate one (0 to 100
+  over the processing run) and show a current-file label ('Verarbeite X von
+  Y') next to it. Processing errors are shown non-blockingly in the UI and
+  log panel instead of a blocking message box.
+
+  Refs #11
+- Feat(gui): integrate docked log panel into main window. [Paul
+  Magister]
+
+  Add a persistent Log Output panel to the bottom of the main window so
+  status, progress and errors are visible without opening a separate
+  window. The separate 'View -> Show Log' Toplevel remains available and
+  mirrors the same live output. Log level selector and Clear Log button
+  are available in both panels.
+
+  Refs #11
+- Plan für: UX/UI- und Workflow-Verbesserungen für gpx-kml-converter.
+  [Paul Magister]
+- Use my new AGENTS.md with agentic loop workflow. [Paul Magister]
+- Fix(gui): delay context menu and support mixed-selection deletion.
+  [Paul Magister]
+
+  - Delay the browser context menu popup via after_idle so a short right-click
+    no longer immediately invokes the top entry.
+  - Remove selected artifacts in place from the in-memory GPX object instead of
+    creating a generated working copy under Generated.
+  - Support deleting mixed artifact types and selections spanning multiple GPX
+    files (collapsed or expanded) without the one-type dialog.
+
+  Refs #10
+- Fix(gui): remove artifacts in place without creating working copies.
+  [Paul Magister]
+
+  Removing tracks, routes or POIs now mutates the in-memory GPX object held
+  under Inputs directly instead of producing a generated working copy under
+  Generated. The original file on disk is never modified.
+
+  Refs #10
+- Add workflow skills. [Paul Magister]
+
+
+1.2.0 (2026-10-09)
+------------------
+- Docs: Update HISTORY.md for release 1.2.0. [Paul Magister]
 - Move _version.py to gitignore. [Paul Magister]
 
 
